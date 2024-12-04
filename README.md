@@ -6,10 +6,10 @@
 [Original VOD Link](https://www.youtube.com/watch?v=dWUe6yjbxv4)
 
 
-[CLIP_EXTRACTED] (https://youtu.be/ONbc8BVhpTc)
+[CLIP_EXTRACTED](https://youtu.be/ONbc8BVhpTc)
 
 
-[TikTok-ready video] (https://youtube.com/shorts/a5YGxXdjkdA?si=DLSR78TdzJAEgvlm)
+[TikTok-ready video](https://youtube.com/shorts/a5YGxXdjkdA?si=DLSR78TdzJAEgvlm)
 
 
 
