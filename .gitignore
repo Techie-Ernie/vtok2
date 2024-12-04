@@ -4,7 +4,6 @@ mvp SEN TARIK ISO VALORANT RANKED GAMEPLAY [Full Match VOD].mp4
 
 # Tests
 extract_image_test.py
-loggingtest.py
 temp/
 images/ 
 predictions_img.png 
