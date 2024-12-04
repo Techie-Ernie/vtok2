@@ -6,12 +6,10 @@
 [Original VOD Link](https://www.youtube.com/watch?v=dWUe6yjbxv4)
 
 
-CLIP_EXTRACTED
-
-<video src="https://github.com/Techie-Ernie/vtok2/blob/main/video0.mp4" width="320" height="480" controls></video>
+[CLIP_EXTRACTED] (https://youtu.be/ONbc8BVhpTc)
 
 
-TikTok-ready video:
+[TikTok-ready video] (https://youtube.com/shorts/a5YGxXdjkdA?si=DLSR78TdzJAEgvlm)
 
 
 
