@@ -8,6 +8,8 @@
 
 CLIP_EXTRACTED
 
+<video src="https://github.com/Techie-Ernie/vtok2/blob/main/video0.mp4" width="320" height="480" controls></video>
+
 
 TikTok-ready video:
 
