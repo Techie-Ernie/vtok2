@@ -2,9 +2,15 @@
 
 #### Extract highlights from pro players' VALORANT games and convert them into TikTok-friendly videos
 
+> [!IMPORTANT]
+> VTok 2.0 is still under development, so bugs are to be expected.
+
 ### Example
 
 [Original VOD Link](https://www.youtube.com/watch?v=dWUe6yjbxv4)
+
+> [!Note]
+> The program has been tested on videos from the YouTube channel [VALORANT Daily](https://www.youtube.com/@valorantdaily1976). Depending on how the videos posted on other channels, the program may or may not work without any further modification.
 
 [![Original VOD Link](https://img.youtube.com/vi/dWUe6yjbxv4/0.jpg)](https://www.youtube.com/watch?v=dWUe6yjbxv4)
 
@@ -44,7 +50,7 @@ export API_KEY=YOUR_ROBOFLOW_API_KEY
     pip install -r requirements.txt
     ```
 
-3. Run main.py and provide links to the match stats (valorant.op.gg) and to the match VOD (only YouTube links supported for now). Further configuration can be done by editing config.ini
+3. Run main.py. Further configuration can be done by editing config.ini
 
     ```
     python main.py
