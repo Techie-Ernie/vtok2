@@ -22,7 +22,7 @@
 
 [![Tiktok-friendly video](https://img.youtube.com/vi/a5YGxXdjkdA/0.jpg)](https://www.youtube.com/watch?v=a5YGxXdjkdA)
 
-### Prerequisities
+### Prerequisites
 
 - This project has been developed and tested on **Ubuntu 22.04 (WSL)**. A Linux distribution is preferred to run the program. Future updates will include Windows support.
 - An account on [Roboflow](roboflow.com) to use the [model](https://universe.roboflow.com/clipsfail/streamer-webcams) for detection of the streamer's camera. Visit [app.roboflow.com](app.roboflow.com), go to settings and copy the Private API Key
