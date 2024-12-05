@@ -1,6 +1,6 @@
 # VTok 2.0
 
-## Extract highlights from pro players' VALORANT games and convert them into TikTok-friendly videos
+#### Extract highlights from pro players' VALORANT games and convert them into TikTok-friendly videos
 
 ### Example
 
@@ -19,7 +19,9 @@
 ### Prerequisities
 
 - This project has been developed and tested on **Ubuntu 22.04 (WSL)**. A Linux distribution is preferred to run the program. Future updates will include Windows support.
-- An account on [Roboflow](roboflow.com) to use the [model](https://universe.roboflow.com/clipsfail/streamer-webcams) for detection of the streamer's camera. Set the API_KEY environment variable:
+- An account on [Roboflow](roboflow.com) to use the [model](https://universe.roboflow.com/clipsfail/streamer-webcams) for detection of the streamer's camera. Visit [app.roboflow.com](app.roboflow.com), go to settings and copy the Private API Key
+
+- Set the API_KEY environment variable:
 
 ```
 export API_KEY=YOUR_ROBOFLOW_API_KEY
@@ -105,7 +107,7 @@ export API_KEY=YOUR_ROBOFLOW_API_KEY
 4. **Moviepy is slow**
 
 - From testing, moviepy takes rather long (about 5 minutes, not more than 10 minutes) to render a ~1 min video.
-- However, I have not found a way to fix this. Perhaps using the ffmpeg_tools directly in the moviepy library may work better (will try in the future)
+- However, I haven't found a way to fix this. Perhaps using the ffmpeg_tools directly in the moviepy library may work better (will try in the future)
 
 ### Future updates
 
