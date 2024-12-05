@@ -1,6 +1,6 @@
 # VTok 2.0
 
-#### Extract highlights from pro players' VALORANT games and convert them into TikTok-friendly videos
+#### Extract highlights from streamers' VALORANT games and convert them into TikTok-friendly videos
 
 > [!IMPORTANT]
 > VTok 2.0 is still under development, so bugs are to be expected.
