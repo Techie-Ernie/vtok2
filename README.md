@@ -101,23 +101,23 @@ export API_KEY=YOUR_ROBOFLOW_API_KEY
 
 ### Considerations
 
-1. **Why use valorant.op.gg and not tracker.gg / blitz.gg?**
+1. **Why use [valorant.op.gg](https://valorant.op.gg) and not [tracker.gg](https://tracker.gg/valorant) / [blitz.gg](https://blitz.gg)?**
 
 - Unfortunately, tracker.gg blocks web scrapers and blitz.gg does not provide enough information for the program to extract. While I would have preferred to use tracker.gg for convenience, valorant.op.gg was the only suitable option I found that provided stats which I could scrape with Selenium.
 
-2. **Why PaddleOCR instead of EasyOCR, pytesseract, etc?**
+2. **Why [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) instead of [EasyOCR](https://github.com/JaidedAI/EasyOCR), [pytesseract](https://github.com/madmaze/pytesseract), etc?**
 
 - I've tested with EasyOCR, pytesseract, PaddleOCR, keras-OCR, but PaddleOCR produced the most accurate results. EasyOCR often failed recognising single digits. As mentioned above, the detection is still not perfect and I'll be working on improving it.
 
 3. **Moviepy is slow**
 
 - From testing, moviepy takes rather long (about 5 minutes, not more than 10 minutes) to render a ~1 min video.
-- However, I haven't found a way to fix this. Perhaps using the ffmpeg_tools directly in the moviepy library may work better (will try in the future)
+- However, I haven't found a way to fix this. Perhaps [using the ffmpeg_tools directly](https://stackoverflow.com/questions/56413813/concat-videos-too-slow-using-python-moviepy) in the moviepy library may work better (will try in the future)
 
 ### Future updates
 
 - More customisation options in config.ini
-- Integrating the original [VTOK 1.0](https://github.com/Techie-Ernie/vtok) into this new version - will need to update moviepy as well since VTOK 1.0 used moviepy 1.x, which has been updated to 2.x + support for VCT matches (however, vlr.gg and valorant.op.gg don't currently provide the stats I need, and rib.gg has shut down)
+- Integrating the original [VTOK 1.0](https://github.com/Techie-Ernie/vtok) into this new version - will need to update moviepy as well since VTOK 1.0 used moviepy 1.x, which has been updated to 2.x + support for VCT matches (however, [vlr.gg](https://vlr.gg) and [valorant.op.gg](https://valorant.op.gg) don't currently provide the stats I need, and [rib.gg](https://rib.gg) has shut down on 1st Dec 2024)
 - Better OCR accuracy
 - Support for Twitch vods on top of YouTube
 - ~~Finding the match stats on valorant.op.gg directly from the YouTube video~~ **Added on 5/12/24**
