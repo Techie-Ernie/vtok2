@@ -33,6 +33,7 @@ player_id = input("Player ID: ")
 score = check_score(filename)
 print(score)
 map_name = predict_map_name(filename)
+print(map_name)
 stats_link = search_score(map_name, player_id, score)
 
 

@@ -44,8 +44,3 @@ def scrape_stats(stats_link, min_kills):
         if kills >= min_kills:
             highlight_rounds[round] = kills
     return highlight_rounds
-
-
-if __name__ == "__main__":
-    link = input("Stats link: ")
-    print(scrape_stats(link, min_kills=3))

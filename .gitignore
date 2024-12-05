@@ -1,13 +1,11 @@
 # Unneccessary videos
-mvp SEN TARIK ISO VALORANT RANKED GAMEPLAY [Full Match VOD].mp4
-
+*.mp4 
 
 # Tests
 extract_image_test.py
 temp/
 images/ 
 predictions_img.png 
-videos/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

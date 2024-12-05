@@ -79,9 +79,3 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=F
     )  # Time taken for prog to run
     cap.release()
     return score_dict
-
-
-if __name__ == "__main__":
-    video_path = input("Video path: ")
-    score_dict = extract_images(video_path=video_path)
-    print(score_dict)

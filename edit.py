@@ -45,7 +45,7 @@ def get_predictions(video_path, debug=False):
         return result["predictions"][0]
 
 
-def edit_video(predictions, video_path, output_dir="."):
+def edit_video(predictions, video_path, output_dir="videos/"):
     # maybe don't write audio here to speed it up
     print(predictions)
     x = predictions["x"]
@@ -68,9 +68,3 @@ def edit_video(predictions, video_path, output_dir="."):
     # ffmpeg_write_video(final_clip, f'{output_dir}/{os.path.splitext(video_path)[0]}_final.mp4', fps=30)
     # f'{output_dir}/{os.path.splitext(video_path)[0]}.mp4'
     # final_clip.write_videofile(f"{output_dir}/{video_path.split('.')[0]}-final.mp4")
-
-
-if __name__ == "__main__":
-    video_path = input("video_path: ")
-    pred = get_predictions(video_path)
-    edit_video(pred, video_path)

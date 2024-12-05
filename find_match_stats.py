@@ -14,6 +14,7 @@ def predict_map_name(video_path):
     # If no map name is found in the video title, prompt user for input instead
     map_list = [
         "bind",
+        "abyss",
         "haven",
         "split",
         "ascent",
@@ -47,7 +48,7 @@ def check_score(video_path):
             cap.set(cv2.CAP_PROP_POS_FRAMES, frame_count - i)
             ret, frame = cap.read()
             cropped_frame_1 = frame[30:70, 770:860]
-            cropped_frame_2 = frame[30:70, 1100:1150]
+            cropped_frame_2 = frame[30:70, 1050:1150]
             img_1 = cv2.resize(
                 (cropped_frame_1), None, fx=2, fy=2, interpolation=cv2.INTER_LINEAR
             )
@@ -90,11 +91,12 @@ def search_score(match_map, player_id, match_score):
         print("Loading took too much time, try again!")
 
     match_game_score = driver.find_elements(By.CLASS_NAME, "match-game-score")
-    print(len(match_game_score))
     for match in match_game_score:
         map_name = match.find_element(By.CLASS_NAME, "map-name").text.lower()
         score = match.find_element(By.CLASS_NAME, "game-score").text.replace("\n", ":")
         if map_name == match_map and score == match_score:
+            print(match_map)
+            print(match_score)
             a_tag = match.find_element(
                 By.XPATH, ".//following::div[contains(@class, 'btn-outlink')]//a"
             )
