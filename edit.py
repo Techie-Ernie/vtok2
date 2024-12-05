@@ -5,7 +5,7 @@ from inference_sdk import InferenceHTTPClient
 import os 
 
 
-API_KEY = os.environ("API_KEY")
+API_KEY = os.environ.get("API_KEY")
 
 def get_predictions(video_path, debug=False):
     cap = cv2.VideoCapture(video_path)

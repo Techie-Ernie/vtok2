@@ -1,12 +1,11 @@
 import configparser
 import time
-import datetime
 from youtube_download import download_youtube
 from extract_images import extract_images
 from extract_video import convert_rounds, extract_clip
 from scraper import scrape_stats
 from edit import edit_video, get_predictions
-
+from find_match_stats import predict_map_name, check_score, search_score
 start_time = time.time()
 
 def read_config():
@@ -26,7 +25,13 @@ def read_config():
     return config_values
 
 filename = download_youtube(input("YouTube URL: "))
-stats_link = input("Stats link (valorant.op.gg)")
+#stats_link = input("Stats link (valorant.op.gg)")
+player_id = input("Player ID: ")
+score = check_score(filename)
+print(score)
+map_name = predict_map_name(filename)
+stats_link = search_score(map_name, player_id, score)
+
 
 if filename and stats_link:
     config = read_config()
