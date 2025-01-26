@@ -1,13 +1,13 @@
 import cv2
 import time
-from ocr import ocr
+from vct_ocr import ocr
 
 # VCT EXTRACT IMAGES
 # May require additional code since replays / timeouts show
 
 
 # Returns score dict
-def extract_images(video_path, output_dir="images/", frame_interval=540, debug=False):
+def extract_images(video_path, output_dir="images/", frame_interval=540, debug=True):
     start = time.time()
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -34,8 +34,8 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=F
                 result_1 = "0"
                 result_2 = "0"
             else:
-                cropped_frame_1 = frame[20:80, 770:860]
-                cropped_frame_2 = frame[20:80, 1040:1150]
+                cropped_frame_1 = frame[20:70, 780:860]
+                cropped_frame_2 = frame[20:70, 1060:1130]
                 # output_path = os.path.join(output_dir, f"{timestamp_str}.png")
                 img_1 = cv2.resize(
                     (cropped_frame_1), None, fx=2, fy=2, interpolation=cv2.INTER_LINEAR
@@ -43,6 +43,7 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=F
                 img_2 = cv2.resize(
                     (cropped_frame_2), None, fx=2, fy=2, interpolation=cv2.INTER_LINEAR
                 )
+
                 result_1 = ocr(img_1)
                 result_2 = ocr(img_2)
                 if debug:
@@ -51,11 +52,15 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=F
                     cv2.imwrite("file1.png", img_1)
                     cv2.imwrite("file2.png", img_2)
             count = 0
+            if result_1 is None and result_2 is None:
+                print("Both none")
+                # use ocr to check if it's replay/tech pause/halftime
             result = [result_1, result_2]
             print(result)
             for item in result:
                 if isinstance(item, str):
                     count += 1
+
             if count == 2:  # Check if there are 2 elements e.g. ['0', '0']
                 self_score = result[0]
                 enemy_score = result[1]
@@ -75,6 +80,7 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=F
                             prev_self_score = int(self_score)
                             prev_enemy_score = int(enemy_score)
                             round += 1
+
         frame_number += 1
     end = time.time()
     print(
