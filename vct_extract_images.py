@@ -35,7 +35,7 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=T
                 result_2 = "0"
             else:
                 cropped_frame_1 = frame[20:70, 780:860]
-                cropped_frame_2 = frame[20:70, 1060:1130]
+                cropped_frame_2 = frame[15:95, 1010:1140]
                 # output_path = os.path.join(output_dir, f"{timestamp_str}.png")
                 img_1 = cv2.resize(
                     (cropped_frame_1), None, fx=2, fy=2, interpolation=cv2.INTER_LINEAR
@@ -55,6 +55,9 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=T
             if result_1 is None and result_2 is None:
                 print("Both none")
                 # use ocr to check if it's replay/tech pause/halftime
+                # need to update timestamp_str such that it skips this part
+                # we can use time() and check the time since the last valid frames
+
             result = [result_1, result_2]
             print(result)
             for item in result:
@@ -69,8 +72,9 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=T
                 ):  # Check both are valid integers
                     # can do some additional checking here to see if numbers make sense
                     if (
-                        int(self_score) >= prev_self_score
-                        or int(enemy_score) >= prev_enemy_score
+                        # this check ensures that replays are not saved
+                        int(self_score) > prev_self_score
+                        or int(enemy_score) > prev_enemy_score
                     ):
                         if f"{self_score}:{enemy_score}" not in added_frames:
                             added_frames.append(f"{self_score}:{enemy_score}")
