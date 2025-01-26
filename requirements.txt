@@ -16,7 +16,9 @@ attrs==24.2.0
 audioread==3.0.1
 av==12.3.0
 backoff==2.2.1
+backports-datetime-fromisoformat==2.0.2
 beautifulsoup4==4.12.3
+black==24.10.0
 certifi==2024.8.30
 cffi==1.17.1
 charset-normalizer==3.4.0
@@ -81,6 +83,7 @@ lightning-utilities==0.11.9
 llvmlite==0.43.0
 lmdb==1.5.1
 lxml==5.3.0
+m3u8==6.0.0
 Mako==1.3.6
 Markdown==3.7
 markdown-it-py==3.0.0
@@ -127,6 +130,7 @@ packaging==24.2
 paddleocr==2.9.1
 paddlepaddle==2.6.2
 pandas==2.2.3
+pathspec==0.12.1
 pillow==10.4.0
 platformdirs==4.3.6
 pooch==1.8.2
@@ -209,6 +213,7 @@ transformers==4.46.3
 trio==0.27.0
 trio-websocket==0.11.1
 triton==3.1.0
+twitch-dl==2.9.2
 typer==0.14.0
 typing-inspect==0.9.0
 typing_extensions==4.12.2
@@ -216,7 +221,6 @@ tzdata==2024.2
 ultralytics==8.3.38
 ultralytics-thop==2.0.12
 urllib3==2.2.3
-validators==0.34.0
 websocket-client==1.8.0
 Werkzeug==3.1.3
 wget==3.2
