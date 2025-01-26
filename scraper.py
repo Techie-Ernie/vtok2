@@ -3,10 +3,11 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+from seleniumbase import Driver
 
 
 # Returns highlights dict
-def scrape_stats(stats_link, min_kills):
+def comp_scrape_stats(stats_link, min_kills):
     options = webdriver.ChromeOptions()
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
@@ -44,3 +45,61 @@ def scrape_stats(stats_link, min_kills):
         if kills >= min_kills:
             highlight_rounds[round] = kills
     return highlight_rounds
+
+
+def vct_scrape_stats(stats_link, min_kills):
+    driver = Driver(uc=True, headless=False)
+    driver.uc_open_with_reconnect(f"{stats_link}&roundNumber=1", reconnect_time=7)
+    # river.uc_gui_click_captcha()
+
+    # changing the property of the navigator value for webdriver to undefined
+    # driver.execute_script(
+    #    "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+    # )
+    # driver.get(f"{stats_link}&roundNumber=1")  # Add error checking
+
+    # Get the number of rounds first
+
+    try:
+        # Waiting for divs to load as they don't load immediately
+        element_present = EC.presence_of_element_located((By.CLASS_NAME, "MuiBox-root"))
+        WebDriverWait(driver, 12).until(element_present)
+        print("Elements ready")
+    except TimeoutException:
+        print("Loading took too much time, try again!")
+    # kills_div = driver.find_elements(By.CLASS_NAME, "kills")
+    number_of_rounds = (
+        len(
+            driver.find_elements(
+                By.XPATH,
+                "/html/body/div[1]/div/div[3]/div[1]/div/div/div[5]/div/div/div/div[2]/div",
+            )
+        )
+        - 2
+    )  # One element is halftime and one element is the final score
+    print(number_of_rounds)
+    """
+    kills_dict = {}
+    for i in range(number_of_rounds):
+        kill_spans = kills_div[i + 2].find_elements(
+            By.TAG_NAME, "span"
+        )  # first 2 'kill' divs do not correspond to the rounds, so skip those
+        number_of_kills = len(kill_spans)
+        kills_dict[i + 1] = number_of_kills  # Adding to kills dict
+    """
+    # close the driver
+    driver.close()
+    """
+    highlight_rounds = {}
+    for round, kills in kills_dict.items():
+        if kills >= min_kills:
+            highlight_rounds[round] = kills
+    return highlight_rounds
+    """
+
+
+if __name__ == "__main__":
+    vct_scrape_stats(
+        "https://www.rib.gg/series/paper-rex-vs-evil-geniuses-valorant-champions-2023/55475?match=124524&tab=rounds",
+        3,
+    )

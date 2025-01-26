@@ -4,7 +4,7 @@ import os
 from youtube_download import download_youtube
 from comp_extract_images import extract_images
 from comp_extract_video import convert_rounds, extract_clip
-from scraper import scrape_stats
+from scraper import comp_scrape_stats, vct_scrape_stats
 from comp_edit import edit_video, get_predictions
 from comp_find_match_stats import predict_map_name, check_score, search_score
 
@@ -44,7 +44,7 @@ if vct_or_comp == "COMP":
 
     if filename and stats_link:
         config = read_config()
-        highlights_dict = scrape_stats(stats_link, config["minimum_kills"])
+        highlights_dict = comp_scrape_stats(stats_link, config["minimum_kills"])
         if highlights_dict:
             score_dict = extract_images(filename, frame_interval=config["interval"])
 
@@ -60,3 +60,7 @@ if vct_or_comp == "COMP":
                     time_taken = end_time - start_time
 else:
     stats_link = input("Stats link(rib.gg)")
+    # Example link: https://www.rib.gg/series/paper-rex-vs-evil-geniuses-valorant-champions-2023/55475?match=124524&tab=rounds
+    if filename and stats_link:
+        config = read_config()
+        highlights_dict = vct_scrape_stats(stats_link, config["minimum_kills"])
