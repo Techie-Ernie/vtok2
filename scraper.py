@@ -47,19 +47,19 @@ def comp_scrape_stats(stats_link, min_kills):
     return highlight_rounds
 
 
-def vct_scrape_stats(stats_link, min_kills):
+def vct_scrape_stats(stats_link):
+    highlight_rounds = {}
+    highlights = [
+        "3K",
+        "4K",
+        "5K" "1v2",
+        "1v3",
+        "1v4",
+        "1v5",
+    ]
+
     driver = Driver(uc=True, headless=False)
     driver.uc_open_with_reconnect(f"{stats_link}&roundNumber=1", reconnect_time=7)
-    # river.uc_gui_click_captcha()
-
-    # changing the property of the navigator value for webdriver to undefined
-    # driver.execute_script(
-    #    "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-    # )
-    # driver.get(f"{stats_link}&roundNumber=1")  # Add error checking
-
-    # Get the number of rounds first
-
     try:
         # Waiting for divs to load as they don't load immediately
         element_present = EC.presence_of_element_located((By.CLASS_NAME, "MuiBox-root"))
@@ -68,6 +68,8 @@ def vct_scrape_stats(stats_link, min_kills):
     except TimeoutException:
         print("Loading took too much time, try again!")
     # kills_div = driver.find_elements(By.CLASS_NAME, "kills")
+
+    # get number of rounds by counting the no. of elements containing the round numbers
     number_of_rounds = (
         len(
             driver.find_elements(
@@ -78,28 +80,26 @@ def vct_scrape_stats(stats_link, min_kills):
         - 2
     )  # One element is halftime and one element is the final score
     print(number_of_rounds)
-    """
-    kills_dict = {}
-    for i in range(number_of_rounds):
-        kill_spans = kills_div[i + 2].find_elements(
-            By.TAG_NAME, "span"
-        )  # first 2 'kill' divs do not correspond to the rounds, so skip those
-        number_of_kills = len(kill_spans)
-        kills_dict[i + 1] = number_of_kills  # Adding to kills dict
-    """
+    for round in range(number_of_rounds):
+        if round == 0:  # First round: we don't want to refresh the page again
+            pass
+        else:
+            driver.uc_open_with_reconnect(
+                f"{stats_link}&roundNumber={round+1}", reconnect_time=7
+            )
+        chips = driver.find_elements(By.CLASS_NAME, "MuiChip-label")
+        print(f"Round {round+1}: ")
+        for chip in chips:
+            if chip.text in highlights:
+                highlight_rounds[round] = chip.text
+
     # close the driver
     driver.close()
-    """
-    highlight_rounds = {}
-    for round, kills in kills_dict.items():
-        if kills >= min_kills:
-            highlight_rounds[round] = kills
+    print(highlight_rounds)
     return highlight_rounds
-    """
 
 
 if __name__ == "__main__":
     vct_scrape_stats(
         "https://www.rib.gg/series/paper-rex-vs-evil-geniuses-valorant-champions-2023/55475?match=124524&tab=rounds",
-        3,
     )
