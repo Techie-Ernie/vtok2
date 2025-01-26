@@ -14,3 +14,8 @@ def download_youtube(url):
         info = ydl.extract_info(url, download=True)
         filename = ydl.prepare_filename(info)
     return filename
+
+
+if __name__ == "__main__":
+    url = input("URL: ")
+    download_youtube(url)

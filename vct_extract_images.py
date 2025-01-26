@@ -2,6 +2,9 @@ import cv2
 import time
 from ocr import ocr
 
+# VCT EXTRACT IMAGES
+# May require additional code since replays / timeouts show
+
 
 # Returns score dict
 def extract_images(video_path, output_dir="images/", frame_interval=540, debug=False):
@@ -31,8 +34,8 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=F
                 result_1 = "0"
                 result_2 = "0"
             else:
-                cropped_frame_1 = frame[30:70, 770:860]
-                cropped_frame_2 = frame[30:70, 1050:1150]
+                cropped_frame_1 = frame[20:80, 770:860]
+                cropped_frame_2 = frame[20:80, 1040:1150]
                 # output_path = os.path.join(output_dir, f"{timestamp_str}.png")
                 img_1 = cv2.resize(
                     (cropped_frame_1), None, fx=2, fy=2, interpolation=cv2.INTER_LINEAR
@@ -79,3 +82,8 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=F
     )  # Time taken for prog to run
     cap.release()
     return score_dict
+
+
+if __name__ == "__main__":
+    score_dict = extract_images("output.mp4")
+    print(score_dict)
