@@ -8,3 +8,7 @@ def ocr(img):
         return reader.readtext(img, detail=0)[0]
 
     return None
+
+
+if __name__ == "__main__":
+    print(ocr("file2.png"))

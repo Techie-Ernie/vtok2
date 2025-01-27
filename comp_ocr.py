@@ -3,14 +3,15 @@ from paddleocr import PaddleOCR
 
 def ocr(img):
     ocr = PaddleOCR(
-        lang="en", show_log=False, use_gpu=True, enable_mkdnn=True
+        lang="en", show_log=False, use_gpu=True, enable_mkdnn=True, use_angle_cls=False
     )  # need to run only once to download and load model into memory
-    results = ocr.ocr(img, cls=False)
+    results = ocr.ocr(img)
     # print(results)
     # SAMPLE RESULTS #
     # [[[[[33.0, 6.0], [66.0, 6.0], [66.0, 32.0], [33.0, 32.0]], ('10', 0.9976402521133423)]]]
     text_confidences = []
     if results[0]:
+
         for line in results[0]:
             text, confidence = line[1][0], line[1][1]
             text_confidences.append((text, confidence))
@@ -28,3 +29,6 @@ def ocr(img):
                 return None
         else:
             return None
+
+
+print(ocr("file4.png"))

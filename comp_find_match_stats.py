@@ -1,4 +1,4 @@
-from ocr import ocr
+from comp_ocr import ocr
 import cv2
 from selenium import webdriver
 from selenium.webdriver.common.by import By

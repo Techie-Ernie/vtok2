@@ -1,6 +1,6 @@
 import cv2
 import time
-from vct_ocr import ocr
+from comp_ocr import ocr
 
 # VCT EXTRACT IMAGES
 # May require additional code since replays / timeouts show
@@ -19,7 +19,6 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=T
     score_dict = {}
     frame_number = 0
 
-    # Add support for stretch res - test on PRX Jinggg gameplay
     while True:
         ret, frame = cap.read()
         if not ret:
@@ -35,7 +34,7 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=T
                 result_2 = "0"
             else:
                 cropped_frame_1 = frame[20:70, 780:860]
-                cropped_frame_2 = frame[15:95, 1010:1140]
+                cropped_frame_2 = frame[0:100, 1000:1150]
                 # output_path = os.path.join(output_dir, f"{timestamp_str}.png")
                 img_1 = cv2.resize(
                     (cropped_frame_1), None, fx=2, fy=2, interpolation=cv2.INTER_LINEAR
@@ -49,8 +48,8 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=T
                 if debug:
                     print(f"result1:{result_1}")
                     print(f"result2:{result_2}")
-                    cv2.imwrite("file1.png", img_1)
-                    cv2.imwrite("file2.png", img_2)
+                    cv2.imwrite("data/file1.png", img_1)
+                    cv2.imwrite("data/file2.png", img_2)
             count = 0
             if result_1 is None and result_2 is None:
                 print("Both none")
@@ -68,7 +67,7 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=T
                 self_score = result[0]
                 enemy_score = result[1]
                 if (
-                    self_score.isdigit() and enemy_score.isdigit()
+                    self_score.isdigit() or enemy_score.isdigit()
                 ):  # Check both are valid integers
                     # can do some additional checking here to see if numbers make sense
                     if (
