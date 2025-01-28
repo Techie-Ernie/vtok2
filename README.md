@@ -103,6 +103,14 @@ export API_KEY=YOUR_ROBOFLOW_API_KEY
 
 #### For VCT matches
 
+7.**vct_ocr.py**
+
+- Explanation to be added
+8.**vct_extract_images.py**
+- Explanation to be added
+9.**vct_extract_video.py**
+- Explanation to be added
+
 ### Considerations
 
 1. **Why use [valorant.op.gg](https://valorant.op.gg) and not [tracker.gg](https://tracker.gg/valorant) / [blitz.gg](https://blitz.gg)?**
