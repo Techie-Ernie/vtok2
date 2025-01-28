@@ -1,6 +1,7 @@
 import cv2
 import time
 from comp_ocr import ocr
+from vct_extract_images import is_valid_score_change
 
 
 # Returns score dict
@@ -60,9 +61,8 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=F
                     self_score.isdigit() and enemy_score.isdigit()
                 ):  # Check both are valid integers
                     # can do some additional checking here to see if numbers make sense
-                    if (
-                        int(self_score) > prev_self_score
-                        or int(enemy_score) > prev_enemy_score
+                    if is_valid_score_change(
+                        self_score, prev_self_score, enemy_score, prev_enemy_score
                     ):
                         if f"{self_score}:{enemy_score}" not in added_frames:
                             added_frames.append(f"{self_score}:{enemy_score}")

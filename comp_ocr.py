@@ -29,6 +29,3 @@ def ocr(img):
                 return None
         else:
             return None
-
-
-print(ocr("file4.png"))
