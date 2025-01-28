@@ -53,10 +53,6 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=T
                     (cropped_frame_1), None, fx=2, fy=2, interpolation=cv2.INTER_LINEAR
                 )
 
-                # img_2 = cv2.resize(
-                #    (cropped_frame_2), None, fx=2, fy=2, interpolation=cv2.INTER_LINEAR
-                # )
-
                 results = ocr(img_1)
 
                 result_1 = results[0]
@@ -88,8 +84,9 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=T
                 self_score = result_1
                 enemy_score = result_2
                 if debug:
-                    print(f"Previous enemy score: {prev_enemy_score}")
                     print(f"Previous self_score: {prev_self_score}")
+
+                    print(f"Previous enemy score: {prev_enemy_score}")
                     print(f"Self score: {self_score}")
                     print(f"Enemy score: {enemy_score}")
                 if (
@@ -109,21 +106,24 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=T
                                 score_dict[f"{self_score}:{enemy_score}"] = float(
                                     timestamp_str
                                 )
+                                prev_self_score = int(self_score)
+                                prev_enemy_score = int(enemy_score)
                                 round += 1
 
-                        prev_self_score = int(self_score)
-                        prev_enemy_score = int(enemy_score)
-                    elif is_valid_score_change(
-                        enemy_score, prev_self_score, self_score, prev_enemy_score
-                    ):
-                        # Special case in which the OCR somehow reads the numbers swapped (e.g. 5:4 as 4:5)
-                        print("check succeeded with swap")
-                        if f"{enemy_score}:{self_score}" not in added_frames:
-                            added_frames.append(f"{enemy_score}:{self_score}")
-                            score_dict[f"{enemy_score}:{self_score}"] = float(
-                                timestamp_str
-                            )
+                        elif is_valid_score_change(
+                            enemy_score, prev_self_score, self_score, prev_enemy_score
+                        ):
+                            # Special case in which the OCR somehow reads the numbers swapped (e.g. 5:4 as 4:5)
+                            print("check succeeded with swap")
+                            if f"{enemy_score}:{self_score}" not in added_frames:
+                                added_frames.append(f"{enemy_score}:{self_score}")
+                                score_dict[f"{enemy_score}:{self_score}"] = float(
+                                    timestamp_str
+                                )
+                                prev_self_score = int(enemy_score)
+                                prev_enemy_score = int(self_score)
                             round += 1
+
                     else:
                         round += 1
         frame_number += 1

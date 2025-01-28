@@ -5,7 +5,7 @@ reader = easyocr.Reader(["en"])
 
 def ocr(img):
     scores = []
-    if len(reader.readtext(img, detail=0)) > 0:
+    if len(reader.readtext(img, detail=0, batch_size=4)) > 0:
         results = reader.readtext(img, detail=0)
         for result in results:
             if len(result) <= 2 and len(scores) < 2:
