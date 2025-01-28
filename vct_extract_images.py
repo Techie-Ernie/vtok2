@@ -19,7 +19,9 @@ def is_valid_score_change(self_score, prev_self_score, enemy_score, prev_enemy_s
 
 
 # Returns score dict
-def extract_images(video_path, output_dir="images/", frame_interval=540, debug=True):
+def vct_extract_images(
+    video_path, output_dir="images/", frame_interval=540, debug=True
+):
     start = time.time()
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -40,6 +42,7 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=T
         round = 0
         if frame_number % frame_interval == 0:
             timestamp = frame_number / fps
+
             timestamp_str = f"{timestamp:.2f}"
             if frame_number == 0:
                 result_1 = "0"
@@ -67,7 +70,7 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=T
 
             count = 0
 
-            if result_1 is None and result_2 is None:
+            if result_1 == "100" and result_2 == "100":
                 print("Both none")
                 # use ocr to check if it's replay/tech pause/halftime
                 # need to update timestamp_str such that it skips this part
@@ -135,8 +138,3 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=T
     )  # Time taken for prog to run
     cap.release()
     return score_dict
-
-
-if __name__ == "__main__":
-    score_dict = extract_images("output.mp4")
-    print(score_dict)
