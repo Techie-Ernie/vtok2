@@ -5,7 +5,7 @@ from youtube_download import download_youtube
 from comp_extract_images import extract_images
 from comp_extract_video import convert_rounds, extract_clip
 from scraper import comp_scrape_stats, vct_scrape_stats
-from comp_edit import edit_video, get_predictions
+from edit import comp_edit_video, get_predictions
 from comp_find_match_stats import predict_map_name, check_score, search_score
 from vct_extract_images import vct_extract_images
 
@@ -56,7 +56,7 @@ if vct_or_comp == "COMP":
                 for i in range(video_count):
                     print(i)
                     pred = get_predictions(f"video{i}.mp4", debug=False)
-                    edit_video(predictions=pred, video_path=f"video{i}.mp4")
+                    comp_edit_video(predictions=pred, video_path=f"video{i}.mp4")
                     end_time = time.time()
                     time_taken = end_time - start_time
 else:
@@ -68,6 +68,7 @@ else:
         config = read_config()
         highlights_dict = vct_scrape_stats(stats_link)
         score_dict = vct_extract_images(filename, frame_interval=config["interval"])
+        print(score_dict)
         round_dict = convert_rounds(score_dict)
         if round_dict:
             video_count = extract_clip(filename, round_dict, highlights_dict)
