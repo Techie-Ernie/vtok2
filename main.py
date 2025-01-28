@@ -31,10 +31,10 @@ def read_config():
     return config_values
 
 
-filename = download_youtube(input("YouTube URL: "))
-# filename = "output.mp4"
 vct_or_comp = input("VCT/COMP: ")
 if vct_or_comp == "COMP":
+    filename = download_youtube(input("YouTube URL: "))
+
     # stats_link = input("Stats link (valorant.op.gg)")
     player_id = input("Player ID: ")
     score = check_score(filename)
@@ -62,6 +62,8 @@ if vct_or_comp == "COMP":
 else:
     # We need to read the start time and end time for the map
     # Also check if the stats link is valid
+    filename = "output.mp4"
+
     stats_link = input("Stats link(rib.gg)")
     # Example link: https://www.rib.gg/series/paper-rex-vs-evil-geniuses-valorant-champions-2023/55475?match=124524&tab=rounds
     if filename and stats_link:

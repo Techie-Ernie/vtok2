@@ -8,10 +8,10 @@ from vct_ocr import ocr
 
 def is_valid_score_change(self_score, prev_self_score, enemy_score, prev_enemy_score):
     if (
-        abs(int(self_score) - prev_self_score) == 1
+        (int(self_score) - prev_self_score) == 1
         and int(enemy_score) == prev_enemy_score
     ) or (
-        abs(int(enemy_score) - prev_enemy_score) == 1
+        (int(enemy_score) - prev_enemy_score) == 1
         and int(self_score) == prev_self_score
     ):
         return True
@@ -138,3 +138,7 @@ def vct_extract_images(
     )  # Time taken for prog to run
     cap.release()
     return score_dict
+
+
+if __name__ == "__main__":
+    vct_extract_images("output.mp4")

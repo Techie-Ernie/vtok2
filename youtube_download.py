@@ -19,3 +19,6 @@ def download_youtube(url):
 if __name__ == "__main__":
     url = input("URL: ")
     download_youtube(url)
+
+
+# ffmpeg -ss 00:10:01 -to 01:12:38 -i prxvsegpearl.mp4 -c copy output.mp4
