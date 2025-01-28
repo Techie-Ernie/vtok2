@@ -1,5 +1,5 @@
 import ffmpeg
-from moviepy import VideoFileClip, CompositeVideoClip
+from moviepy import VideoFileClip, CompositeVideoClip, ImageClip
 import cv2
 from inference_sdk import InferenceHTTPClient
 import os
@@ -71,12 +71,16 @@ def comp_edit_video(predictions, video_path, output_dir="videos/"):
     # final_clip.write_videofile(f"{output_dir}/{video_path.split('.')[0]}-final.mp4")
 
 
-def vct_edit_video(video_path):
-    input_stream = ffmpeg.input(video_path)
-    background_stream = input_stream.filter("boxblur", 20)
-    ffmpeg.output(background_stream, "out_bg.mp4").run()
+def vct_edit_video(video_path, overlay=False):
     small = VideoFileClip(video_path)
-    bg = VideoFileClip("out_bg.mp4")
+    if overlay:
+        overlay_image_path = "overlays/overlay_template.png"
+        bg = ImageClip(overlay_image_path).with_duration(small.duration)
+    else:
+        input_stream = ffmpeg.input(video_path)
+        background_stream = input_stream.filter("boxblur", 20)
+        ffmpeg.output(background_stream, "out_bg.mp4").run()
+        bg = VideoFileClip("out_bg.mp4")
     small = small.with_position((-400, 420))  # Set position on screen
     bg = bg.resized((1080, 1920))
     bg = bg.cropped(
@@ -90,4 +94,4 @@ def vct_edit_video(video_path):
 
 
 if __name__ == "__main__":
-    vct_edit_video("video0.mp4")
+    vct_edit_video("video0.mp4", overlay=True)
