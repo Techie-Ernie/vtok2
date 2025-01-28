@@ -1,6 +1,6 @@
 # VTok 2.0
 
-#### Extract highlights from streamers' VALORANT games and convert them into TikTok-friendly videos
+#### Extract highlights from streamers' VALORANT games or VCT matches and convert them into TikTok-friendly videos
 
 > [!IMPORTANT]
 > VTok 2.0 is still under development, so bugs are to be expected.
@@ -73,24 +73,26 @@ export API_KEY=YOUR_ROBOFLOW_API_KEY
 
 - Contains the scrape_stats() function, which uses Selenium to count the number of kills in each round. This returns a dict highlight_rounds, which are the rounds where kills >= MIN_KILLS (as defined in config.ini)
 
-3. **extract_images.py**
+3. **edit.py**
+
+- edit.py converts the video into a TikTok-friendly format.
+- get_predictions() uses a model from Roboflow to detect the streamer's camera in a particular frame of the video. (set to 150th frame - an arbitary number - check predictions_img.png if the function fails - may fix this later)
+- The model locates the bounding box of the streamer's camera and these coordinates are sent to the edit_video() function
+- edit_video() uses moviepy to create the final TikTok-friendly video by combining the streamer's camera at the top of the video and the gameplay at the bottom.
+
+#### For streamers' games
+
+4. **comp_extract_images.py**
 
 - Contains the extract_images() function which takes in the downloaded video and reads the frames using OpenCV, skipping forward by frame_interval (as defined in config.ini) number of frames.
 - PaddleOCR is used to read the numbers corresponding to the player's team score and the opponent's score, adding it to score_dict, along with its timestamp. Identical scores and scores which don't make sense (e.g. from 10-7 to 10-6) will not be added.
 - score_dict is returned
 - This part is still buggy, as contrast between the numbers and the background is sometimes too low and the numbers are inaccurate or not recognised.
 
-4. **extract_video.py**
+5. **comp_extract_video.py**
 
 - convert_rounds() takes in the score_dict from extract_images() and simply iterates through score_dict to replace the key (initially something like '0:0' in score_dict to '1' instead - essentially getting the round number). The new dict returned is round_dict
 - extract_clip() parses the round_dict and highlight_dict in order to determine the timestamps where there are highlights that need to be extracted. It then uses moviepy to extract a subclip of the original downloaded video and writes the subclip to a file. The result will look like the CLIP_EXTRACTED video at the top of this file.
-
-5. **edit.py**
-
-- edit.py converts the video into a TikTok-friendly format.
-- get_predictions() uses a model from Roboflow to detect the streamer's camera in a particular frame of the video. (set to 150th frame - an arbitary number - check predictions_img.png if the function fails - may fix this later)
-- The model locates the bounding box of the streamer's camera and these coordinates are sent to the edit_video() function
-- edit_video() uses moviepy to create the final TikTok-friendly video by combining the streamer's camera at the top of the video and the gameplay at the bottom.
 
 6.**find_match_stats.py**
 
@@ -98,6 +100,8 @@ export API_KEY=YOUR_ROBOFLOW_API_KEY
 - As many VODs of the games (on YouTube) have the map name in their titles, it checks for that. If not able to find the map name, you will have to key in the name manually.
 - Input the Riot ID of the player
 - Selenium is used to find the match (searches past 20 matches) : if it can't find the match, you will have to key the link in manually.
+
+#### For VCT matches
 
 ### Considerations
 
@@ -109,6 +113,8 @@ export API_KEY=YOUR_ROBOFLOW_API_KEY
 
 - I've tested with EasyOCR, pytesseract, PaddleOCR, keras-OCR, but PaddleOCR produced the most accurate results. EasyOCR often failed recognising single digits. As mentioned above, the detection is still not perfect and I'll be working on improving it.
 
+- UPDATE: EasyOCR is now used for VCT matches
+
 3. **Moviepy is slow**
 
 - From testing, moviepy takes rather long (about 5 minutes, not more than 10 minutes) to render a ~1 min video.
@@ -117,7 +123,7 @@ export API_KEY=YOUR_ROBOFLOW_API_KEY
 ### Future updates
 
 - More customisation options in config.ini
-- Integrating the original [VTOK 1.0](https://github.com/Techie-Ernie/vtok) into this new version - will need to update moviepy as well since VTOK 1.0 used moviepy 1.x, which has been updated to 2.x + support for VCT matches (however, [vlr.gg](https://vlr.gg) and [valorant.op.gg](https://valorant.op.gg) don't currently provide the stats I need, and [rib.gg](https://rib.gg) has shut down on 1st Dec 2024)
-- Better OCR accuracy
+- ~~Integrating the original [VTOK 1.0](https://github.com/Techie-Ernie/vtok) into this new version - will need to update moviepy as well since VTOK 1.0 used moviepy 1.x, which has been updated to 2.x + support for VCT matches (however, [vlr.gg](https://vlr.gg) and [valorant.op.gg](https://valorant.op.gg) don't currently provide the stats I need, and [rib.gg](https://rib.gg) has shut down on 1st Dec 2024)~~ **UPDATE: [rib.gg](https://rib.gg) is back! Added support for VCT matches - Added on 28/1/25**
+- Better OCR accuracy: WIP
 - Support for Twitch vods on top of YouTube
 - ~~Finding the match stats on valorant.op.gg directly from the YouTube video~~ **Added on 5/12/24**
