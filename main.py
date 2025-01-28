@@ -3,7 +3,7 @@ import time
 import os
 from youtube_download import download_youtube
 from comp_extract_images import extract_images
-from comp_extract_video import convert_rounds, extract_clip
+from extract_video import convert_rounds, extract_clip
 from scraper import comp_scrape_stats, vct_scrape_stats
 from edit import comp_edit_video, get_predictions
 from comp_find_match_stats import predict_map_name, check_score, search_score
@@ -31,8 +31,8 @@ def read_config():
     return config_values
 
 
-# filename = download_youtube(input("YouTube URL: "))
-filename = "output.mp4"
+filename = download_youtube(input("YouTube URL: "))
+# filename = "output.mp4"
 vct_or_comp = input("VCT/COMP: ")
 if vct_or_comp == "COMP":
     # stats_link = input("Stats link (valorant.op.gg)")
