@@ -105,12 +105,13 @@ export API_KEY=YOUR_ROBOFLOW_API_KEY
 
 7.**vct_ocr.py**
 
-- Explanation to be added
+
 8.**vct_extract_images.py**
+
 - is_valid_score_change checks if the score of one team differs from the previous recorded score by 1 and that the other team's score remains the same, returning True if the above 2 conditions are met. this is used to check if the scores are valid 
 - vct_extract_images is similar to comp_extract_images except that the OCR detection is done on the entire top bar of the screen including the team names, timer, etc. this gives better performance with EasyOCR as compared to only cropping out the scores of both teams. 
+
 9.**vct_extract_video.py**
-- Explanation to be added
 
 ### Considerations
 
