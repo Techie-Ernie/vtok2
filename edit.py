@@ -89,7 +89,8 @@ def vct_edit_video(video_path, overlay=False):
     final_video = CompositeVideoClip(
         [bg, small]
     )  # Overlay the small screen over the blurred background
-    final_video.write_videofile("out.mp4")
+    path = f"{os.path.splitext(video_path)[0]}_out.mp4"
+    final_video.write_videofile(path)
     final_video.close()
 
 
