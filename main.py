@@ -1,11 +1,12 @@
 import configparser
 import time
+import ffmpeg
 import os
 from youtube_download import download_youtube
 from comp_extract_images import extract_images
 from extract_video import convert_rounds, extract_clip
 from scraper import comp_scrape_stats, vct_scrape_stats
-from edit import comp_edit_video, get_predictions
+from edit import comp_edit_video, get_predictions, vct_edit_video
 from comp_find_match_stats import predict_map_name, check_score, search_score
 from vct_extract_images import vct_extract_images
 
@@ -32,8 +33,9 @@ def read_config():
 
 
 vct_or_comp = input("VCT/COMP: ")
+filename = download_youtube(input("YouTube URL: "))
+
 if vct_or_comp == "COMP":
-    filename = download_youtube(input("YouTube URL: "))
 
     # stats_link = input("Stats link (valorant.op.gg)")
     player_id = input("Player ID: ")
@@ -62,7 +64,11 @@ if vct_or_comp == "COMP":
 else:
     # We need to read the start time and end time for the map
     # Also check if the stats link is valid
-    filename = "output.mp4"
+    start_time = input("Start time: (HH:MM:SS)")
+    end_time = input("End time: (HH:MM:SS)")
+    ffmpeg.input(filename, ss=start_time, to=end_time).output(
+        "output.mp4", c="copy"
+    ).run()
 
     stats_link = input("Stats link(rib.gg)")
     # Example link: https://www.rib.gg/series/paper-rex-vs-evil-geniuses-valorant-champions-2023/55475?match=124524&tab=rounds
@@ -75,3 +81,5 @@ else:
         if round_dict:
             video_count = extract_clip(filename, round_dict, highlights_dict)
             print(video_count)
+        for i in range(video_count):
+            vct_edit_video(f"video{i}.mp4")

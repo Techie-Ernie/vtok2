@@ -50,7 +50,7 @@ def comp_scrape_stats(stats_link, min_kills):
 def vct_scrape_stats(stats_link):
     highlight_rounds = {}
     highlights = [
-        "3K",
+        # "3K",
         "4K",
         "5K",
         "1v2",
@@ -67,7 +67,6 @@ def vct_scrape_stats(stats_link):
         print("Elements ready")
     except TimeoutException:
         print("Loading took too much time, try again!")
-    # kills_div = driver.find_elements(By.CLASS_NAME, "kills")
 
     # get number of rounds by counting the no. of elements containing the round numbers
     number_of_rounds = (
@@ -90,7 +89,6 @@ def vct_scrape_stats(stats_link):
         chips = driver.find_elements(By.CLASS_NAME, "MuiChip-label")
         print(f"Round {round+1}: ")
         for chip in chips:
-            print(chip.text)
             if chip.text in highlights:
                 highlight_rounds[round + 1] = chip.text
 

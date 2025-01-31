@@ -11,18 +11,22 @@ def convert_rounds(score_dict):
 
 
 def extract_clip(vod_path, round_dict, highlights_dict):
+    print(f"Round dict: {round_dict}")
     video_count = 0
     for i in range(len(list(highlights_dict.keys()))):
         round = list(highlights_dict.keys())[i]
         print(type(round))
-        start_time = round_dict[round]
-        print(start_time)
-        end_time = round_dict[round + 1]
-        print(end_time)
+        try:
+            start_time = round_dict[round]
+            print(start_time)
+            end_time = round_dict[round + 1]
+            print(end_time)
 
-        with VideoFileClip(vod_path) as video:
-            new = video.subclipped(start_time, end_time)
-            new.write_videofile(f"video{i}.mp4")
+            with VideoFileClip(vod_path) as video:
+                new = video.subclipped(start_time, end_time)
+                new.write_videofile(f"video{i}.mp4")
 
-        video_count += 1
+            video_count += 1
+        except IndexError:  # when round_dict[round+1] gives an error at the last key
+            break
     return video_count
