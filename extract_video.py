@@ -27,6 +27,6 @@ def extract_clip(vod_path, round_dict, highlights_dict):
                 new.write_videofile(f"video{i}.mp4")
 
             video_count += 1
-        except IndexError:  # when round_dict[round+1] gives an error at the last key
+        except KeyError:  # when round_dict[round+1] gives an error at the last key
             break
     return video_count
