@@ -3,6 +3,8 @@ import time
 import ffmpeg
 import os
 
+from pydrive2.drive import GoogleDrive
+from pydrive2.auth import GoogleAuth
 from moviepy import VideoFileClip
 from youtube_download import download_youtube
 from comp_extract_images import extract_images
@@ -15,8 +17,6 @@ from subtitles import transcribe_audio, add_subtitles
 
 start_time = time.time()
 subs = True
-
-assert os.environ.get("API_KEY") is not None, "No API KEY!"
 
 
 def read_config():
@@ -32,7 +32,7 @@ def read_config():
         "interval": interval,
         "minimum_kills": minimum_kills,
     }
-    print(config_values)
+    # print(config_values)
     return config_values
 
 
@@ -40,7 +40,7 @@ vct_or_comp = input("VCT/COMP: ")
 filename = download_youtube(input("YouTube URL: "))
 
 if vct_or_comp == "COMP":
-
+    assert os.environ.get("API_KEY") is not None, "No API KEY!"
     # stats_link = input("Stats link (valorant.op.gg)")
     player_id = input("Player ID: ")
     score = check_score(filename)
@@ -68,13 +68,13 @@ if vct_or_comp == "COMP":
 else:
     # We need to read the start time and end time for the map
     # Also check if the stats link is valid
-    start_time = input("Start time: (HH:MM:SS)")
-    end_time = input("End time: (HH:MM:SS)")
+    start_time = input("Start time: (HH:MM:SS) ")
+    end_time = input("End time: (HH:MM:SS) ")
     ffmpeg.input(filename, ss=start_time, to=end_time).output(
         "output.mp4", c="copy"
     ).run()
 
-    stats_link = input("Stats link(rib.gg)")
+    stats_link = input("Stats link(rib.gg) ")
     # Example link: https://www.rib.gg/series/paper-rex-vs-evil-geniuses-valorant-champions-2023/55475?match=124524&tab=rounds
     if filename and stats_link:
         config = read_config()
@@ -89,13 +89,32 @@ else:
             vct_edit_video(f"video{i}.mp4")
         if subs:
             for i in range(video_count):
-                video_clip = VideoFileClip(f"video{i}.mp4")
+                video_clip = VideoFileClip(f"video{i}_out.mp4")
                 audio_clip = video_clip.audio
                 audio_clip.write_audiofile(f"video{i}" + ".mp3")
-                srt_file = transcribe_audio(input_file=f"video{i}.mp3")
+                srt_file = transcribe_audio(
+                    input_file=f"video{i}.mp3", words=True, gpu=False
+                )
                 add_subtitles(
                     f"video{i}" + ".mp3",
-                    f"video{i}" + ".mp4",
+                    f"video{i}_out" + ".mp4",
                     srt_file,
                     f"video{i}_final.mp4",
                 )
+
+                # Uploading videos
+                gauth = GoogleAuth()
+                gauth.LocalWebserverAuth()
+                drive = GoogleDrive(gauth)
+                for filename in os.listdir("."):
+                    if os.path.splitext(filename)[1] == ".mp4" and "final" in filename:
+                        metadata = {
+                            "parents": [{"id": "1-KURoYnlEt2_hiOubAGhWlPn6wS5Vnxb"}],
+                            "title": f"{filename}",
+                            "mimeType": "video/mp4",
+                        }
+                        # Create file
+                        file = drive.CreateFile(metadata=metadata)
+                        file.SetContentFile(f"{filename}")
+                        print("uploading video")
+                        file.Upload()

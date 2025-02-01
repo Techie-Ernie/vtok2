@@ -7,7 +7,7 @@ from vct_ocr import ocr
 
 
 def is_valid_score_change(self_score, prev_self_score, enemy_score, prev_enemy_score):
-# check if difference between current score and previous score of one team is 1 - and the  current score and previous score of the other team is the same -> this is a valid score change 
+    # check if difference between current score and previous score of one team is 1 - and the  current score and previous score of the other team is the same -> this is a valid score change
     if (
         (int(self_score) - prev_self_score) == 1
         and int(enemy_score) == prev_enemy_score
@@ -67,7 +67,6 @@ def vct_extract_images(
                 if debug:
                     print(f"result1:{result_1}")
                     print(f"result2:{result_2}")
-                    cv2.imwrite("data/file1.png", img_1)
 
             count = 0
 

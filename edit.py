@@ -79,8 +79,10 @@ def vct_edit_video(video_path, overlay=False):
     else:
         input_stream = ffmpeg.input(video_path)
         background_stream = input_stream.filter("boxblur", 20)
-        ffmpeg.output(background_stream, "out_bg.mp4").run()
-        bg = VideoFileClip("out_bg.mp4")
+        ffmpeg.output(
+            background_stream, f"{os.path.splitext(video_path)[0]}bg.mp4"
+        ).run()
+        bg = VideoFileClip(f"{os.path.splitext(video_path)[0]}bg.mp4")
     small = small.with_position((-400, 420))  # Set position on screen
     bg = bg.resized((1080, 1920))
     bg = bg.cropped(

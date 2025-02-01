@@ -52,11 +52,6 @@ def vct_scrape_stats(stats_link):
     highlights = [
         # "3K",
         "4K",
-        "5K",
-        "1v2",
-        "1v3",
-        "1v4",
-        "1v5",
     ]
     driver = Driver(uc=True, headless=False)
     driver.uc_open_with_reconnect(f"{stats_link}&roundNumber=1", reconnect_time=7)
@@ -87,7 +82,6 @@ def vct_scrape_stats(stats_link):
                 f"{stats_link}&roundNumber={round+1}", reconnect_time=7
             )
         chips = driver.find_elements(By.CLASS_NAME, "MuiChip-label")
-        print(f"Round {round+1}: ")
         for chip in chips:
             if chip.text in highlights:
                 highlight_rounds[round + 1] = chip.text
