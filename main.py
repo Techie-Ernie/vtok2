@@ -2,6 +2,8 @@ import configparser
 import time
 import ffmpeg
 import os
+
+from moviepy import VideoFileClip
 from youtube_download import download_youtube
 from comp_extract_images import extract_images
 from extract_video import convert_rounds, extract_clip
@@ -9,8 +11,10 @@ from scraper import comp_scrape_stats, vct_scrape_stats
 from edit import comp_edit_video, get_predictions, vct_edit_video
 from comp_find_match_stats import predict_map_name, check_score, search_score
 from vct_extract_images import vct_extract_images
+from subtitles import transcribe_audio, add_subtitles
 
 start_time = time.time()
+subs = True
 
 assert os.environ.get("API_KEY") is not None, "No API KEY!"
 
@@ -83,3 +87,15 @@ else:
             print(video_count)
         for i in range(video_count):
             vct_edit_video(f"video{i}.mp4")
+        if subs:
+            for i in range(video_count):
+                video_clip = VideoFileClip(f"video{i}.mp4")
+                audio_clip = video_clip.audio
+                audio_clip.write_audiofile(f"video{i}" + ".mp3")
+                srt_file = transcribe_audio(input_file=f"video{i}.mp3")
+                add_subtitles(
+                    f"video{i}" + ".mp3",
+                    f"video{i}" + ".mp4",
+                    srt_file,
+                    f"video{i}_final.mp4",
+                )
