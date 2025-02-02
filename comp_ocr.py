@@ -3,7 +3,7 @@ from paddleocr import PaddleOCR
 
 def ocr(img):
     ocr = PaddleOCR(
-        lang="en", show_log=False, use_gpu=True, enable_mkdnn=True, use_angle_cls=False
+        lang="en", show_log=False, use_gpu=True, enable_mkdnn=True, cls=False
     )  # need to run only once to download and load model into memory
     results = ocr.ocr(img)
     # print(results)

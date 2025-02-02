@@ -16,14 +16,14 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=F
     added_frames = []
     score_dict = {}
     frame_number = 0
-
+    prev_self_score = 0
+    prev_enemy_score = 0
     # Add support for stretch res - test on PRX Jinggg gameplay
     while True:
         ret, frame = cap.read()
         if not ret:
             break
-        prev_self_score = 0
-        prev_enemy_score = 0
+
         round = 0
         if frame_number % frame_interval == 0:
             timestamp = frame_number / fps
@@ -31,6 +31,7 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=F
             if frame_number == 0:
                 result_1 = "0"
                 result_2 = "0"
+                score_dict["0:0"] = timestamp_str
             else:
                 cropped_frame_1 = frame[30:70, 770:860]
                 cropped_frame_2 = frame[30:70, 1040:1150]
@@ -57,21 +58,23 @@ def extract_images(video_path, output_dir="images/", frame_interval=540, debug=F
             if count == 2:  # Check if there are 2 elements e.g. ['0', '0']
                 self_score = result[0]
                 enemy_score = result[1]
-                if (
-                    self_score.isdigit() and enemy_score.isdigit()
-                ):  # Check both are valid integers
-                    # can do some additional checking here to see if numbers make sense
-                    if is_valid_score_change(
-                        self_score, prev_self_score, enemy_score, prev_enemy_score
-                    ):
-                        if f"{self_score}:{enemy_score}" not in added_frames:
-                            added_frames.append(f"{self_score}:{enemy_score}")
-                            score_dict[f"{self_score}:{enemy_score}"] = float(
-                                timestamp_str
-                            )
-                            prev_self_score = int(self_score)
-                            prev_enemy_score = int(enemy_score)
-                            round += 1
+                print(f"Previous self_score: {prev_self_score}")
+
+                print(f"Previous enemy score: {prev_enemy_score}")
+                print(f"Self score: {self_score}")
+                print(f"Enemy score: {enemy_score}")
+
+                if is_valid_score_change(
+                    self_score, prev_self_score, enemy_score, prev_enemy_score
+                ):
+                    print("check succeeded")
+                    if f"{self_score}:{enemy_score}" not in added_frames:
+                        added_frames.append(f"{self_score}:{enemy_score}")
+                        score_dict[f"{self_score}:{enemy_score}"] = float(timestamp_str)
+                        prev_self_score = int(self_score)
+                        prev_enemy_score = int(enemy_score)
+                        round += 1
+
         frame_number += 1
     end = time.time()
     print(
