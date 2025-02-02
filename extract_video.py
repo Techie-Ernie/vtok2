@@ -24,7 +24,11 @@ def extract_clip(vod_path, round_dict, highlights_dict):
 
             with VideoFileClip(vod_path) as video:
                 new = video.subclipped(start_time, end_time)
-                new.write_videofile(f"video{i}.mp4")
+                new.write_videofile(
+                    f"video{i}.mp4",
+                    threads=12,
+                    preset="ultrafast",
+                )
 
             video_count += 1
         except KeyError:  # when round_dict[round+1] gives an error at the last key

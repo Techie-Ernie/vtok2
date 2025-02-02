@@ -64,7 +64,9 @@ def comp_edit_video(predictions, video_path, output_dir="videos/"):
     gameplay = gameplay.with_position(("center", "bottom"))
     final_clip = CompositeVideoClip([streamer_cam, gameplay], size=(1080, 1920))
     final_clip.write_videofile(
-        f"{output_dir}/{os.path.splitext(video_path)[0]}_final.mp4"
+        f"{output_dir}/{os.path.splitext(video_path)[0]}_final.mp4",
+        threads=12,
+        preset="ultrafast",
     )
     # ffmpeg_write_video(final_clip, f'{output_dir}/{os.path.splitext(video_path)[0]}_final.mp4', fps=30)
     # f'{output_dir}/{os.path.splitext(video_path)[0]}.mp4'
@@ -92,7 +94,11 @@ def vct_edit_video(video_path, overlay=False):
         [bg, small]
     )  # Overlay the small screen over the blurred background
     path = f"{os.path.splitext(video_path)[0]}_out.mp4"
-    final_video.write_videofile(path)
+    final_video.write_videofile(
+        path,
+        threads=12,
+        preset="ultrafast",
+    )
     final_video.close()
 
 
