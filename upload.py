@@ -2,23 +2,20 @@ from pydrive2.drive import GoogleDrive
 from pydrive2.auth import GoogleAuth
 import os
 
-gauth = GoogleAuth()
-gauth.LocalWebserverAuth()
-drive = GoogleDrive(gauth)
 
-
-def upload_video(folder="."):
-    print("function ran")
+def upload_video(folder=".", name_filter="video"):
+    gauth = GoogleAuth()
+    gauth.LocalWebserverAuth()
+    drive = GoogleDrive(gauth)
     for filename in os.listdir(folder):
-        if os.path.splitext(filename)[1] == ".mp4" and "video" in filename:
+        if os.path.splitext(filename)[1] == ".mp4" and name_filter in filename:
             metadata = {
                 "parents": [{"id": "1-KURoYnlEt2_hiOubAGhWlPn6wS5Vnxb"}],
-                "title": f"{filename}",
+                "title": filename,
                 "mimeType": "video/mp4",
             }
-            # Create file
             file = drive.CreateFile(metadata=metadata)
-            file.SetContentFile(f"{filename}")
+            file.SetContentFile(filename)
             print("uploading video")
             file.Upload()
 

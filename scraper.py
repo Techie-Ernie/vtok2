@@ -6,64 +6,52 @@ from selenium.webdriver.support.ui import WebDriverWait
 from seleniumbase import Driver
 
 
-# Returns highlights dict
-def comp_scrape_stats(stats_link, min_kills):
+def make_stealth_driver():
     options = webdriver.ChromeOptions()
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
-
     driver = webdriver.Chrome(options=options)
-
-    # changing the property of the navigator value for webdriver to undefined
     driver.execute_script(
         "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
     )
-    driver.get(f"{stats_link}?tab=Performance")  # Add error checking
+    return driver
+
+
+def comp_scrape_stats(stats_link, min_kills):
+    driver = make_stealth_driver()
+    driver.get(f"{stats_link}?tab=Performance")
     try:
-        # Waiting for divs to load as they don't load immediately
         element_present = EC.presence_of_element_located((By.CLASS_NAME, "kills"))
         WebDriverWait(driver, 5).until(element_present)
         print("Elements ready")
     except TimeoutException:
         print("Loading took too much time, try again!")
+
     kills_div = driver.find_elements(By.CLASS_NAME, "kills")
     number_of_rounds = len(driver.find_elements(By.CLASS_NAME, "round"))
     kills_dict = {}
     for i in range(number_of_rounds):
-        kill_spans = kills_div[i + 2].find_elements(
-            By.TAG_NAME, "span"
-        )  # first 2 'kill' divs do not correspond to the rounds, so skip those
-        number_of_kills = len(kill_spans)
-        kills_dict[i + 1] = number_of_kills  # Adding to kills dict
+        kill_spans = kills_div[i + 2].find_elements(By.TAG_NAME, "span")
+        kills_dict[i + 1] = len(kill_spans)
 
-    # close the driver
     driver.close()
 
-    highlight_rounds = {}
-    for round, kills in kills_dict.items():
-        if kills >= min_kills:
-            highlight_rounds[round] = kills
-    return highlight_rounds
+    return {rnd: kills for rnd, kills in kills_dict.items() if kills >= min_kills}
 
 
 def vct_scrape_stats(stats_link):
     highlight_rounds = {}
-    highlights = [
-        # "3K",
-        "4K",
-    ]
+    highlights = ["4K"]
     driver = Driver(uc=True, headless=False)
     driver.uc_open_with_reconnect(f"{stats_link}&roundNumber=1", reconnect_time=7)
     try:
-        # Waiting for divs to load as they don't load immediately
         element_present = EC.presence_of_element_located((By.CLASS_NAME, "MuiBox-root"))
         WebDriverWait(driver, 12).until(element_present)
         print("Elements ready")
     except TimeoutException:
         print("Loading took too much time, try again!")
 
-    # get number of rounds by counting the no. of elements containing the round numbers
     number_of_rounds = (
         len(
             driver.find_elements(
@@ -72,21 +60,18 @@ def vct_scrape_stats(stats_link):
             )
         )
         - 2
-    )  # One element is halftime and one element is the final score
+    )
     print(number_of_rounds)
-    for round in range(number_of_rounds):
-        if round == 0:  # First round: we don't want to refresh the page again
-            pass
-        else:
+    for rnd in range(number_of_rounds):
+        if rnd > 0:
             driver.uc_open_with_reconnect(
-                f"{stats_link}&roundNumber={round+1}", reconnect_time=7
+                f"{stats_link}&roundNumber={rnd + 1}", reconnect_time=7
             )
         chips = driver.find_elements(By.CLASS_NAME, "MuiChip-label")
         for chip in chips:
             if chip.text in highlights:
-                highlight_rounds[round + 1] = chip.text
+                highlight_rounds[rnd + 1] = chip.text
 
-    # close the driver
     driver.close()
     print(highlight_rounds)
     return highlight_rounds

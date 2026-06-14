@@ -15,47 +15,41 @@ def get_predictions(video_path, debug=False):
         exit()
     cap.set(cv2.CAP_PROP_POS_FRAMES, 150)
     success, image = cap.read()
-    if success:
-        cv2.imwrite("predictions_img.png", image)
-        CLIENT = InferenceHTTPClient(
-            api_url="https://detect.roboflow.com", api_key=API_KEY
+    if not success:
+        return None
+    cv2.imwrite("predictions_img.png", image)
+    CLIENT = InferenceHTTPClient(api_url="https://detect.roboflow.com", api_key=API_KEY)
+    result = CLIENT.infer("predictions_img.png", model_id="streamer-webcams/2")
+    if not result.get("predictions"):
+        return None
+
+    if debug:
+        image = cv2.imread("predictions_img.png")
+        x, y, width, height = (
+            result["predictions"][0]["x"],
+            result["predictions"][0]["y"],
+            result["predictions"][0]["width"],
+            result["predictions"][0]["height"],
         )
-        result = CLIENT.infer("predictions_img.png", model_id="streamer-webcams/2")
-        if debug:
-            image = cv2.imread("predictions_img.png")
-            x, y, width, height = (
-                result["predictions"][0]["x"],
-                result["predictions"][0]["y"],
-                result["predictions"][0]["width"],
-                result["predictions"][0]["height"],
-            )
+        x1, y1 = int(x - width / 2), int(y - height / 2)
+        cv2.rectangle(image, (x1, y1), (x1 + int(width), y1 + int(height)), (0, 255, 0), 2)
+        cv2.imshow("Image with Bounding Box", image)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
-            # Convert the center x, y, width, height to top-left corner x, y, width, height
-            x1, y1 = int(x - width / 2), int(y - height / 2)
-
-            # Draw the bounding box
-            cv2.rectangle(
-                image, (x1, y1), (x1 + int(width), y1 + int(height)), (0, 255, 0), 2
-            )
-
-            # Display image with bounding box for debugging
-            cv2.imshow("Image with Bounding Box", image)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
-
-        return result["predictions"][0]
+    return result["predictions"][0]
 
 
 def comp_edit_video(predictions, video_path, output_dir="videos/"):
-    # maybe don't write audio here to speed it up
+    if predictions is None:
+        print(f"no predictions found for {video_path}, skipping")
+        return
     print(predictions)
     x = predictions["x"]
     y = predictions["y"]
     width = predictions["width"]
     height = predictions["height"]
-    # Load gameplay video
     gameplay = VideoFileClip(video_path)
-
     streamer_cam = gameplay.cropped(x_center=x, y_center=y, width=width, height=height)
     gameplay = gameplay.resized(width=1080, height=1280)
     gameplay = gameplay.cropped(x1=400, x2=(gameplay.w - 400))
@@ -68,9 +62,6 @@ def comp_edit_video(predictions, video_path, output_dir="videos/"):
         threads=12,
         preset="ultrafast",
     )
-    # ffmpeg_write_video(final_clip, f'{output_dir}/{os.path.splitext(video_path)[0]}_final.mp4', fps=30)
-    # f'{output_dir}/{os.path.splitext(video_path)[0]}.mp4'
-    # final_clip.write_videofile(f"{output_dir}/{video_path.split('.')[0]}-final.mp4")
 
 
 def vct_edit_video(video_path, overlay=False):
@@ -85,20 +76,12 @@ def vct_edit_video(video_path, overlay=False):
             background_stream, f"{os.path.splitext(video_path)[0]}bg.mp4"
         ).run()
         bg = VideoFileClip(f"{os.path.splitext(video_path)[0]}bg.mp4")
-    small = small.with_position((-400, 420))  # Set position on screen
+    small = small.with_position((-400, 420))
     bg = bg.resized((1080, 1920))
-    bg = bg.cropped(
-        x_center=540, y_center=960, width=1080, height=1920
-    )  # Potrait format
-    final_video = CompositeVideoClip(
-        [bg, small]
-    )  # Overlay the small screen over the blurred background
+    bg = bg.cropped(x_center=540, y_center=960, width=1080, height=1920)
+    final_video = CompositeVideoClip([bg, small])
     path = f"{os.path.splitext(video_path)[0]}_out.mp4"
-    final_video.write_videofile(
-        path,
-        threads=12,
-        preset="ultrafast",
-    )
+    final_video.write_videofile(path, threads=12, preset="ultrafast")
     final_video.close()
 
 
