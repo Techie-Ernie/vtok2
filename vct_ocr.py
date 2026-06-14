@@ -3,26 +3,26 @@ import easyocr
 reader = easyocr.Reader(["en"])
 
 
-def ocr(img):
-    scores = []
-    results = reader.readtext(img, detail=0)
-    if results:
-        print(results)
-        for result in results:
-            if len(result) <= 2 and len(scores) < 2:
-                # replacement for 4 since '4' is detected as 'R'
+def ocr_score(img, take="right"):
+    """
+    Extract a single score digit from a narrow score-region crop.
 
-                if "R" in result:
-                    scores.append("4")
-                if result.isdigit():
-                    scores.append(result)
+    take='right'  returns the rightmost digit (use for the left-team crop).
+    take='left'   returns the leftmost digit (use for the right-team crop, where
+                  the team logo can appear to the right during buy-phase HUD).
+    Returns '100' when no valid digit is found.
+    """
+    results = reader.readtext(img, detail=1, allowlist="0123456789")
 
-        if len(scores) == 2:
-            return scores
-        else:
-            return ["100", "100"]
-    return ["100", "100"]
+    candidates = []
+    for bbox, text, _conf in results:
+        text = text.strip()
+        if text.isdigit() and 1 <= len(text) <= 2:
+            x_center = (bbox[0][0] + bbox[2][0]) / 2
+            candidates.append((x_center, text))
 
+    if not candidates:
+        return "100"
 
-if __name__ == "__main__":
-    print(ocr("file2.png"))
+    candidates.sort(key=lambda c: c[0])
+    return candidates[0][1] if take == "left" else candidates[-1][1]

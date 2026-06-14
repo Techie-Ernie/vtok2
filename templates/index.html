@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VTok 2.0</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f0f;
+      --surface: #1a1a1a;
+      --border: #2a2a2a;
+      --red: #ff4655;
+      --red-dim: #c0333f;
+      --text: #e8e8e8;
+      --muted: #777;
+      --green: #22c55e;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      width: 100%;
+      padding: 18px 40px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    header .logo {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    header .logo span { color: var(--red); }
+
+    .container {
+      width: 100%;
+      max-width: 820px;
+      padding: 36px 20px 60px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 28px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tab-btn {
+      padding: 10px 22px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+      letter-spacing: 0.5px;
+    }
+
+    .tab-btn.active {
+      color: var(--red);
+      border-bottom-color: var(--red);
+    }
+
+    .tab-btn:hover:not(.active) { color: var(--text); }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 28px 28px 24px;
+      margin-bottom: 20px;
+    }
+
+    .card h2 {
+      font-size: 0.75rem;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 18px;
+    }
+
+    .field { margin-bottom: 16px; }
+
+    label {
+      display: block;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 5px;
+      letter-spacing: 0.3px;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 5px;
+      padding: 9px 12px;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input:focus { border-color: var(--red); }
+
+    .row { display: flex; gap: 12px; }
+    .row .field { flex: 1; }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .toggle {
+      position: relative;
+      width: 38px;
+      height: 22px;
+      cursor: pointer;
+    }
+
+    .toggle input { opacity: 0; width: 0; height: 0; }
+
+    .slider {
+      position: absolute;
+      inset: 0;
+      background: var(--border);
+      border-radius: 22px;
+      transition: background 0.2s;
+    }
+
+    .slider::before {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      left: 3px;
+      top: 3px;
+      transition: transform 0.2s;
+    }
+
+    .toggle input:checked + .slider { background: var(--red); }
+    .toggle input:checked + .slider::before { transform: translateX(16px); }
+
+    .toggle-label { font-size: 0.85rem; color: var(--text); }
+
+    .run-btn {
+      width: 100%;
+      padding: 13px;
+      background: var(--red);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-top: 8px;
+    }
+
+    .run-btn:hover:not(:disabled) { background: var(--red-dim); }
+    .run-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* Terminal */
+    .terminal {
+      background: #0a0a0a;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      font-family: 'Consolas', 'Fira Code', monospace;
+      font-size: 0.82rem;
+      line-height: 1.6;
+      min-height: 160px;
+      max-height: 340px;
+      overflow-y: auto;
+      color: #ccc;
+    }
+
+    .terminal .line { white-space: pre-wrap; word-break: break-word; }
+    .terminal .line.error { color: var(--red); }
+    .terminal .line.done { color: var(--green); }
+    .terminal .cursor {
+      display: inline-block;
+      width: 8px;
+      height: 14px;
+      background: var(--red);
+      animation: blink 1s step-end infinite;
+      vertical-align: middle;
+      margin-left: 2px;
+    }
+
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .status-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      margin-left: 10px;
+      vertical-align: middle;
+    }
+
+    .status-badge.running { background: #1e3a5f; color: #60a5fa; }
+    .status-badge.ok { background: #14532d; color: var(--green); }
+    .status-badge.error { background: #450a0a; color: var(--red); }
+
+    /* Clips gallery */
+    .clips-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .clips-header h2 {
+      font-size: 0.75rem;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .refresh-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 5px;
+      padding: 5px 12px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .refresh-btn:hover { color: var(--text); border-color: #555; }
+
+    .clips-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+    }
+
+    .clip-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .clip-card video {
+      width: 100%;
+      display: block;
+    }
+
+    .clip-card .clip-name {
+      padding: 8px 10px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      word-break: break-all;
+    }
+
+    .no-clips {
+      color: var(--muted);
+      font-size: 0.88rem;
+      padding: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">V<span>Tok</span> 2.0</div>
+  </header>
+
+  <div class="container" id="app">
+    <div class="tabs">
+      <button class="tab-btn" :class="{ active: mode === 'vct' }" @click="mode = 'vct'">VCT</button>
+      <button class="tab-btn" :class="{ active: mode === 'comp' }" @click="mode = 'comp'">COMP</button>
+      <button class="tab-btn" :class="{ active: mode === 'clips' }" @click="mode = 'clips'; loadClips()">Clips</button>
+    </div>
+
+    <!-- VCT form -->
+    <template v-if="mode === 'vct'">
+      <div class="card">
+        <h2>VCT Match</h2>
+
+        <div class="field">
+          <label>YouTube URL</label>
+          <input type="text" v-model="vct.youtube_url" placeholder="https://www.youtube.com/watch?v=..." />
+        </div>
+
+        <div class="field">
+          <label>Stats link <span style="color:#555">(rib.gg or vlr.gg)</span></label>
+          <input type="text" v-model="vct.stats_link" placeholder="https://rib.gg/series/... or https://www.vlr.gg/..." />
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Start time <span style="color:#555">(HH:MM:SS, optional)</span></label>
+            <input type="text" v-model="vct.start_time" placeholder="00:00:00" />
+          </div>
+          <div class="field">
+            <label>End time <span style="color:#555">(HH:MM:SS, optional)</span></label>
+            <input type="text" v-model="vct.end_time" placeholder="01:30:00" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Map number <span style="color:#555">(vlr.gg fallback only)</span></label>
+            <input type="number" v-model.number="vct.game_num" min="1" max="5" style="max-width:100px" />
+          </div>
+          <div class="field" style="display:flex;align-items:flex-end;padding-bottom:2px">
+            <div class="toggle-row">
+              <label class="toggle">
+                <input type="checkbox" v-model="vct.subs" />
+                <span class="slider"></span>
+              </label>
+              <span class="toggle-label">Generate subtitles</span>
+            </div>
+          </div>
+        </div>
+
+        <button class="run-btn" :disabled="running" @click="submit('vct')">
+          {{ running ? 'Running…' : 'Run VCT Pipeline' }}
+        </button>
+      </div>
+    </template>
+
+    <!-- COMP form -->
+    <template v-if="mode === 'comp'">
+      <div class="card">
+        <h2>Competitive Match</h2>
+
+        <div class="field">
+          <label>YouTube URL</label>
+          <input type="text" v-model="comp.youtube_url" placeholder="https://www.youtube.com/watch?v=..." />
+        </div>
+
+        <div class="field">
+          <label>Player ID <span style="color:#555">(valorant.op.gg username)</span></label>
+          <input type="text" v-model="comp.player_id" placeholder="name#TAG" />
+        </div>
+
+        <button class="run-btn" :disabled="running" @click="submit('comp')">
+          {{ running ? 'Running…' : 'Run COMP Pipeline' }}
+        </button>
+      </div>
+    </template>
+
+    <!-- Log terminal -->
+    <div class="card" v-if="mode !== 'clips'">
+      <h2>
+        Log
+        <span v-if="jobStatus" class="status-badge" :class="jobStatus">
+          {{ jobStatus === 'running' ? 'RUNNING' : jobStatus === 'ok' ? 'DONE' : 'ERROR' }}
+        </span>
+      </h2>
+      <div class="terminal" ref="terminal">
+        <div v-for="(line, i) in logs" :key="i" class="line" :class="line.cls">{{ line.text }}</div>
+        <span v-if="running" class="cursor"></span>
+      </div>
+    </div>
+
+    <!-- Clips gallery -->
+    <template v-if="mode === 'clips'">
+      <div class="card">
+        <div class="clips-header">
+          <h2>Finished Clips</h2>
+          <button class="refresh-btn" @click="loadClips">Refresh</button>
+        </div>
+
+        <div v-if="clips.length === 0" class="no-clips">No clips found yet.</div>
+
+        <div class="clips-grid">
+          <div class="clip-card" v-for="clip in clips" :key="clip">
+            <video controls preload="metadata">
+              <source :src="'/clips/' + clip" type="video/mp4" />
+            </video>
+            <div class="clip-name">{{ clip }}</div>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script>
+    const { createApp, ref, nextTick } = Vue;
+
+    createApp({
+      setup() {
+        const mode = ref('vct');
+        const running = ref(false);
+        const jobStatus = ref('');
+        const logs = ref([]);
+        const clips = ref([]);
+        const terminal = ref(null);
+
+        const vct = ref({
+          youtube_url: '',
+          stats_link: '',
+          start_time: '',
+          end_time: '',
+          game_num: 1,
+          subs: true,
+        });
+
+        const comp = ref({
+          youtube_url: '',
+          player_id: '',
+        });
+
+        async function submit(m) {
+          logs.value = [];
+          jobStatus.value = 'running';
+          running.value = true;
+
+          const payload = m === 'vct'
+            ? { mode: 'vct', ...vct.value }
+            : { mode: 'comp', ...comp.value };
+
+          const res = await fetch('/api/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+
+          const { job_id } = await res.json();
+          const es = new EventSource(`/api/status/${job_id}`);
+
+          es.onmessage = async (e) => {
+            const msg = JSON.parse(e.data);
+            if (msg.type === 'log') {
+              logs.value.push({ text: msg.message, cls: '' });
+            } else if (msg.type === 'done') {
+              jobStatus.value = msg.status;
+              running.value = false;
+              if (msg.status === 'error') {
+                logs.value.push({ text: '— pipeline failed —', cls: 'error' });
+              } else {
+                logs.value.push({ text: '— pipeline complete —', cls: 'done' });
+              }
+              es.close();
+            }
+            await nextTick();
+            if (terminal.value) {
+              terminal.value.scrollTop = terminal.value.scrollHeight;
+            }
+          };
+        }
+
+        async function loadClips() {
+          const res = await fetch('/api/clips');
+          clips.value = await res.json();
+        }
+
+        return { mode, running, jobStatus, logs, clips, terminal, vct, comp, submit, loadClips };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>

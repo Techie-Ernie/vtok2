@@ -1,5 +1,6 @@
+import subprocess
 import ffmpeg
-from moviepy import VideoFileClip, CompositeVideoClip, ImageClip
+from moviepy import VideoFileClip, CompositeVideoClip
 import cv2
 from inference_sdk import InferenceHTTPClient
 import os
@@ -64,25 +65,35 @@ def comp_edit_video(predictions, video_path, output_dir="videos/"):
     )
 
 
-def vct_edit_video(video_path, overlay=False):
-    small = VideoFileClip(video_path)
-    if overlay:
-        overlay_image_path = "overlays/overlay_template.png"
-        bg = ImageClip(overlay_image_path).with_duration(small.duration)
-    else:
-        input_stream = ffmpeg.input(video_path)
-        background_stream = input_stream.filter("boxblur", 20)
-        ffmpeg.output(
-            background_stream, f"{os.path.splitext(video_path)[0]}bg.mp4"
-        ).run()
-        bg = VideoFileClip(f"{os.path.splitext(video_path)[0]}bg.mp4")
-    small = small.with_position((-400, 420))
-    bg = bg.resized((1080, 1920))
-    bg = bg.cropped(x_center=540, y_center=960, width=1080, height=1920)
-    final_video = CompositeVideoClip([bg, small])
-    path = f"{os.path.splitext(video_path)[0]}_out.mp4"
-    final_video.write_videofile(path, threads=12, preset="ultrafast")
-    final_video.close()
+def vct_edit_video(input_path, output_path, srt_path=None):
+    """
+    Compose 9:16 short: blurred stretched background + centered gameplay overlay.
+    Optionally burns SRT subtitles in the same ffmpeg pass — no intermediate files.
+
+    Layout (1080×1920 canvas):
+      - bg: source stretched to fill 1080×1920, blurred
+      - fg: center 1080×1080 crop of source, overlaid at y=420
+    """
+    sub_filter = ""
+    if srt_path:
+        escaped = srt_path.replace("\\", "\\\\").replace(":", "\\:").replace("'", "\\'")
+        sub_filter = f",subtitles='{escaped}'"
+
+    filter_complex = (
+        "[0:v]scale=1080:1920:flags=bilinear,boxblur=20:1,setsar=1[bg];"
+        "[0:v]crop=1080:1080:400:0,setsar=1[fg];"
+        f"[bg][fg]overlay=x=0:y=420{sub_filter}[out]"
+    )
+
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", input_path,
+         "-filter_complex", filter_complex,
+         "-map", "[out]", "-map", "0:a",
+         "-c:v", "libx264", "-preset", "fast", "-crf", "18",
+         "-c:a", "aac", "-b:a", "192k",
+         output_path],
+        check=True,
+    )
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ from moviepy import VideoFileClip
 from youtube_download import download_youtube
 from comp_extract_images import extract_images
 from extract_video import convert_rounds, extract_clip
-from scraper import comp_scrape_stats, vlr_scrape_stats
+from scraper import comp_scrape_stats, vct_scrape_stats, vlr_scrape_stats, vlr_to_rib
 from edit import comp_edit_video, get_predictions, vct_edit_video
 from comp_find_match_stats import predict_map_name, check_score, search_score
 from vct_extract_images import vct_extract_images
@@ -62,13 +62,22 @@ def run_vct(filename, subs=True):
         "output.mp4", c="copy"
     ).run()
 
-    stats_link = input("Stats link (vlr.gg): ")
-    game_num = int(input("Map number (1, 2, 3...): "))
-    if not (filename and stats_link):
+    raw_link = input("Stats link (rib.gg or vlr.gg): ")
+    if not (filename and raw_link):
         return
 
     config = read_config()
-    highlights_dict = vlr_scrape_stats(stats_link, game_num)
+
+    if "vlr.gg" in raw_link:
+        rib_link = vlr_to_rib(raw_link)
+        if rib_link:
+            highlights_dict = vct_scrape_stats(rib_link)
+        else:
+            print("Could not find match on rib.gg — falling back to vlr.gg scraper.")
+            game_num = int(input("Map number (1, 2, 3...): "))
+            highlights_dict = vlr_scrape_stats(raw_link, game_num)
+    else:
+        highlights_dict = vct_scrape_stats(raw_link)
     score_dict = vct_extract_images(filename, frame_interval=config["interval"])
     print(score_dict)
     round_dict = convert_rounds(score_dict)

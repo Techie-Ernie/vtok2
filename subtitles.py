@@ -1,87 +1,107 @@
 from faster_whisper import WhisperModel
 import os
-from moviepy.video.tools.subtitles import SubtitlesClip
-from moviepy.video.io.VideoFileClip import VideoFileClip
-from moviepy.video.VideoClip import TextClip
-from moviepy.video.compositing import CompositeVideoClip
-from moviepy.video.io.ffmpeg_writer import ffmpeg_write_video
 
 
-def format_time(seconds):
-    minutes, seconds = divmod(seconds, 60)
-    hours, minutes = divmod(minutes, 60)
-    milliseconds = (seconds - int(seconds)) * 1000
-    return f"{int(hours):02d}:{int(minutes):02d}:{int(seconds):02d},{int(milliseconds):03d}"  # This is the format for srt file
+def _format_ass_time(seconds):
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    s = seconds % 60
+    cs = int((s - int(s)) * 100)
+    return f"{h}:{m:02d}:{int(s):02d}.{cs:02d}"
 
 
-def transcribe_audio(input_file, words, gpu):
+# SecondaryColour (&H0000FFFF = yellow) is the pre-karaoke colour — each word
+# sweeps from yellow to white (\kf) as it's spoken, giving a TikTok-style highlight.
+_ASS_HEADER = """\
+[Script Info]
+ScriptType: v4.00+
+WrapStyle: 0
+ScaledBorderAndShadow: yes
+PlayResX: 1080
+PlayResY: 1920
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Arial,55,&H00FFFFFF,&H0000FFFF,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,4,0,2,10,10,200,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+"""
+
+_BASE_PROMPT = (
+    "Valorant, VCT, spike, Phantom, Vandal, Operator, Sheriff, Spectre, Odin, Ares, "
+    "Jett, Reyna, Phoenix, Neon, Raze, Yoru, Iso, Sage, Cypher, Killjoy, Chamber, "
+    "Deadlock, Brimstone, Omen, Viper, Astra, Harbor, Sova, Skye, Breach, Fade, Gekko, "
+    "eco, full buy, force buy, half buy, clutch, ace, 4K, 5K, plant, defuse, retake, "
+    "rotate, smoke, flash, molly, dart, recon, ultimate, ult, Ascent, Bind, Haven, "
+    "Split, Icebox, Breeze, Fracture, Pearl, Lotus, Sunset, Abyss"
+)
+
+WORDS_PER_CHUNK = 3
+
+
+def _flush_chunk(f, chunk):
+    """Write one karaoke dialogue line from a list of (text, start, end) tuples."""
+    if not chunk:
+        return
+    line_start = chunk[0][1]
+    line_end = chunk[-1][2]
+    parts = []
+    for j, (text, ws, we) in enumerate(chunk):
+        # Duration covers the gap to the next word so timing stays gapless.
+        if j + 1 < len(chunk):
+            cs = max(1, int((chunk[j + 1][1] - ws) * 100))
+        else:
+            cs = max(1, int((we - ws) * 100))
+        parts.append(f"{{\\kf{cs}}}{text}")
+    f.write(
+        f"Dialogue: 0,{_format_ass_time(line_start)},"
+        f"{_format_ass_time(line_end)},Default,,0,0,0,," + " ".join(parts) + "\n"
+    )
+
+
+def transcribe_audio(input_file, words, gpu, vocabulary=None):
     model_size = "large-v3"
 
-    if gpu:  # Run on GPU with FP16
+    if gpu:
         model = WhisperModel(model_size, device="cuda", compute_type="float16")
-        # or run on GPU with INT8
-        # model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
     else:
-        # or run on CPU with INT8
         model = WhisperModel(model_size, device="cpu", compute_type="int8")
-    # Initial prompt helps the model recognise the nouns unique to the situation (e.g. valorant)
+
+    ass_filename = os.path.splitext(input_file)[0] + ".ass"
+
     if words:
+        match_terms = ", ".join(vocabulary) if vocabulary else ""
+        prompt = f"{match_terms}, {_BASE_PROMPT}" if match_terms else _BASE_PROMPT
         segments, info = model.transcribe(
             input_file,
             word_timestamps=True,
-            initial_prompt="Paper Rex, Evil Geniuses, davai, mindfreak, f0rsakeN, , jinggg, jawgemo, Boostio, Demon1, Ethan, Com, Ascent, Bind, Haven, Split, Icebox, Breeze, Fracture, Pearl, Lotus, Spike, Eco, Full Buy, Half Buy, Operator, Phantom, Vandal, Sheriff, Ghost, Spectre, Ares, Odin, Ultimate, Clutch, Ace, Rotate, Retake, Push, Defuse, Plant, Smurf, Peek, Flash, Molly, Smoke, Dart, Recon, Ult Orb, Spike Rush, Competitive, Unrated, Deathmatch, Spike Plant, Spike Defuse, Omen, Jett, Phoenix, Reyna, Sage, Sova, Cypher, Killjoy, Brimstone, Viper, Astra, Skye, Yoru, Breach, Raze, Chamber, Neon, Fade, Harbor, Gekko, Deadlock, Iso, Team Deathmatch, Premier Mode, Ranked, Radiant, Immortal, Diamond, Platinum, Gold, Silver, Bronze, Iron, Clutch Minister, IGL, Lurker, Entry Fragger, Controller, Sentinel, Duelist, Initiator, Crosshair, Spray Control, Headshot, Body Shot, Footwork, Utility, Economy, Anti-Eco, Force Buy, Operator Play, Wallbang, One-Tap, Trade Kill, Post-Plant, Pre-Plant, Default, Execute, Fake, Retake, Rotate, Lurking, Peekers Advantage, Map Control, Site Execute, Site Hold, Site Take, Spike Carrier, Spike Runner, Team Synergy, Comms, Callouts, Flank, Bait, Trade, Mid Control, Split Push, Default Play, Aggro Play, Passive Play, Utility Usage, Ult Economy, Teamfight, Post-Plant, Map Pick, Map",
+            initial_prompt=prompt,
+            # hotwords boosts these tokens in beam search — stronger than initial_prompt alone
+            hotwords=match_terms if match_terms else None,
         )
+        print("Detected language '%s' with probability %f" % (info.language, info.language_probability))
 
-        print(
-            "Detected language '%s' with probability %f"
-            % (info.language, info.language_probability)
-        )
-        srt_filename = os.path.splitext(input_file)[0] + ".srt"
-
-        with open(srt_filename, "w", encoding="utf-8") as srt_file:
-            count = 1
+        with open(ass_filename, "w", encoding="utf-8") as f:
+            f.write(_ASS_HEADER)
+            chunk = []
             for segment in segments:
                 for word in segment.words:
-                    start_time = format_time(word.start)
-                    end_time = format_time(word.end)
-                    line = f"{count}\n{start_time} --> {end_time}\n{word.word.lstrip()}\n\n"
-                    count += 1
-                    srt_file.write(line)
+                    text = word.word.strip()
+                    if not text:
+                        continue
+                    chunk.append((text, word.start, word.end))
+                    if len(chunk) >= WORDS_PER_CHUNK:
+                        _flush_chunk(f, chunk)
+                        chunk = []
+            _flush_chunk(f, chunk)
     else:
-        segments, info = model.transcribe(input_file)
-        srt_filename = os.path.splitext(input_file)[0] + ".srt"
-        with open(srt_filename, "w", encoding="utf-8") as srt_file:
+        segments, _ = model.transcribe(input_file)
+        with open(ass_filename, "w", encoding="utf-8") as f:
+            f.write(_ASS_HEADER)
             for segment in segments:
-                start_time = format_time(segment.start)
-                end_time = format_time(segment.end)
-                line = f"{segment.id + 1}\n{start_time} --> {end_time}\n{segment.text.lstrip()}\n\n"
-                srt_file.write(line)
-    return srt_filename
-
-
-def add_subtitles(
-    audio,
-    video,
-    srt,
-    output_path,
-    text_font_size=100,
-    text_colour="white",
-    text_stroke_colour="black",
-    vertical_align="center",
-    text_font="Roboto-Bold.ttf",
-):
-    vid = VideoFileClip(video)
-    generator = lambda text: TextClip(
-        text=text,
-        font=text_font,
-        font_size=text_font_size,
-        color=text_colour,
-        stroke_width=10,
-        margin=(None, 700),
-        stroke_color=text_stroke_colour,
-        vertical_align=vertical_align,
-        size=vid.size,
-    )
-    sub = SubtitlesClip(srt, make_textclip=generator)
-    final = CompositeVideoClip.CompositeVideoClip([vid, sub], size=vid.size)
-    ffmpeg_write_video(final, output_path, fps=vid.fps, audiofile=audio)
+                f.write(
+                    f"Dialogue: 0,{_format_ass_time(segment.start)},"
+                    f"{_format_ass_time(segment.end)},Default,,0,0,0,,{segment.text.lstrip()}\n"
+                )
+    return ass_filename

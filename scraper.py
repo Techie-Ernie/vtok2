@@ -1,3 +1,5 @@
+import json
+import re
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs, unquote
@@ -44,40 +46,95 @@ def comp_scrape_stats(stats_link, min_kills):
 
 
 def vct_scrape_stats(stats_link):
-    highlight_rounds = {}
-    highlights = ["4K"]
+    """
+    Scrape rib.gg for highlight rounds (4K/5K) by parsing the __NEXT_DATA__ JSON
+    embedded in the page — one load instead of one per round.
+    """
     driver = Driver(uc=True, headless=False)
-    driver.uc_open_with_reconnect(f"{stats_link}&roundNumber=1", reconnect_time=7)
+    driver.uc_open_with_reconnect(stats_link, reconnect_time=7)
+
+    # Dismiss Cookiebot dialog if it appears
     try:
-        element_present = EC.presence_of_element_located((By.CLASS_NAME, "MuiBox-root"))
-        WebDriverWait(driver, 12).until(element_present)
-        print("Elements ready")
+        deny_btn = WebDriverWait(driver, 6).until(
+            EC.element_to_be_clickable((By.XPATH, "//button[normalize-space()='Deny']"))
+        )
+        deny_btn.click()
+        print("Cookie dialog dismissed")
+    except TimeoutException:
+        pass
+
+    try:
+        WebDriverWait(driver, 12).until(
+            EC.presence_of_element_located((By.CLASS_NAME, "MuiBox-root"))
+        )
     except TimeoutException:
         print("Loading took too much time, try again!")
 
-    number_of_rounds = (
-        len(
-            driver.find_elements(
-                By.XPATH,
-                "/html/body/div[1]/div/div[3]/div[1]/div/div/div[5]/div/div/div/div[2]/div",
-            )
-        )
-        - 2
-    )
-    print(number_of_rounds)
-    for rnd in range(number_of_rounds):
-        if rnd > 0:
-            driver.uc_open_with_reconnect(
-                f"{stats_link}&roundNumber={rnd + 1}", reconnect_time=7
-            )
-        chips = driver.find_elements(By.CLASS_NAME, "MuiChip-label")
-        for chip in chips:
-            if chip.text in highlights:
-                highlight_rounds[rnd + 1] = chip.text
-
+    src = driver.page_source
     driver.close()
+
+    # Pull all round/event data from Next.js server-side props
+    m = re.search(
+        r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>',
+        src, re.DOTALL
+    )
+    if not m:
+        print("Could not find __NEXT_DATA__ on rib.gg page")
+        return {}
+
+    data = json.loads(m.group(1))
+    pp = data["props"]["pageProps"]
+
+    # pageProps.matchId is the match shown (from ?match= URL param)
+    match_id = pp.get("matchId")
+    matches = pp.get("series", {}).get("matches", [])
+    target = next((x for x in matches if x["id"] == match_id), None) or (matches[0] if matches else None)
+    if not target:
+        print("No match data found in rib.gg response")
+        return {}
+
+    num_rounds = len(target.get("rounds", []))
+    print(f"Total rounds: {num_rounds}")
+
+    # Count kills per player per round from the events array
+    events = pp.get("matchDetails", {}).get("events", [])
+    round_kills: dict[int, dict[int, int]] = {}
+    for event in events:
+        if event.get("eventType") == "kill" and event.get("playerId") is not None:
+            rnum = event["roundNumber"]
+            pid = event["playerId"]
+            round_kills.setdefault(rnum, {})
+            round_kills[rnum][pid] = round_kills[rnum].get(pid, 0) + 1
+
+    highlight_rounds = {}
+    for rnum, player_kills in round_kills.items():
+        max_kills = max(player_kills.values())
+        if max_kills >= 4:
+            highlight_rounds[rnum] = "5K" if max_kills >= 5 else "4K"
+
+    # Collect team names + player IGNs to pass as Whisper vocabulary hints
+    vocabulary = []
+    series = pp.get("series", {})
+    for team_key in ("team1", "team2"):
+        team = series.get(team_key) or {}
+        for field in ("name", "abbreviation", "shortName"):
+            val = team.get(field, "")
+            if val and val not in vocabulary:
+                vocabulary.append(val)
+    for team in series.get("teams", []):
+        for field in ("name", "abbreviation", "shortName"):
+            val = team.get(field, "")
+            if val and val not in vocabulary:
+                vocabulary.append(val)
+    md = pp.get("matchDetails", {})
+    for player in md.get("players", []):
+        ign = player.get("ign") or player.get("name") or player.get("username") or ""
+        if ign and ign not in vocabulary:
+            vocabulary.append(ign)
+
+    print(f"Vocabulary hints: {vocabulary}")
     print(highlight_rounds)
-    return highlight_rounds
+    return highlight_rounds, vocabulary
 
 
 def vlr_scrape_stats(stats_link, game_num=1):
@@ -167,9 +224,21 @@ def vlr_scrape_stats(stats_link, game_num=1):
     if not has_multikill:
         print("No 4K/5K found in advanced stats; returning all elimination rounds.")
 
+    # Collect team names + player IGNs from the performance page
+    vocabulary = []
+    for tag in soup.select(".match-header-link-name .wf-title-med"):
+        name = tag.get_text(strip=True)
+        if name and name not in vocabulary:
+            vocabulary.append(name)
+    for tag in perf_soup.select(".mod-player .text-of"):
+        ign = tag.get_text(strip=True)
+        if ign and ign not in vocabulary:
+            vocabulary.append(ign)
+
+    print(f"Vocabulary hints: {vocabulary}")
     print(f"Highlight rounds: {len(elim_rounds)} elimination rounds out of {total_rounds} total")
     print(elim_rounds)
-    return elim_rounds
+    return elim_rounds, vocabulary
 
 
 def _rib_url_from_search(team1, team2):

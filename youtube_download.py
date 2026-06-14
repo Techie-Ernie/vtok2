@@ -6,7 +6,7 @@ def download_youtube(url):
     # Configure options if necessary
     ydl_opts = {
         "outtmpl": "%(title)s.%(ext)s",
-        "format": "bestvideo+bestaudio",  # Choose the best available quality
+        "format": "bestvideo[vcodec^=avc]+bestaudio/bestvideo+bestaudio",  # prefer H.264; OpenCV can't decode AV1
         "merge_output_format": "mp4",
     }
 
