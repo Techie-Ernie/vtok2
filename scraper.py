@@ -1,5 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
+from urllib.parse import urlparse, parse_qs, unquote
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
@@ -169,6 +170,108 @@ def vlr_scrape_stats(stats_link, game_num=1):
     print(f"Highlight rounds: {len(elim_rounds)} elimination rounds out of {total_rounds} total")
     print(elim_rounds)
     return elim_rounds
+
+
+def _rib_url_from_search(team1, team2):
+    """
+    Search DuckDuckGo for a rib.gg series page containing both team names.
+    DuckDuckGo's plain HTML endpoint is scraper-friendly and covers all
+    indexed rib.gg pages, including old matches not on rib.gg/matches.
+    DDG wraps result URLs in //duckduckgo.com/l/?uddg=ENCODED_URL redirects,
+    so we decode the uddg parameter to get the real URL.
+    """
+    query = f'site:rib.gg "{team1}" "{team2}"'
+    resp = requests.get(
+        "https://html.duckduckgo.com/html/",
+        params={"q": query},
+        headers={"User-Agent": "Mozilla/5.0"},
+        timeout=15,
+    )
+    soup = BeautifulSoup(resp.text, "lxml")
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        if "duckduckgo.com/l/" in href:
+            parsed = urlparse("https:" + href)
+            real_url = parse_qs(parsed.query).get("uddg", [None])[0]
+            if real_url:
+                href = unquote(real_url)
+        if "rib.gg/series/" in href:
+            if "?" not in href:
+                href += "?tab=rounds"
+            return href
+    return None
+
+
+def vlr_to_rib(vlr_url):
+    """
+    Given a vlr.gg match URL, find and return the corresponding rib.gg URL.
+
+    Strategy:
+    1. Fetch the vlr.gg page (plain HTTP) to extract both team names.
+    2. Open rib.gg/matches with Selenium and look for a matching series link
+       (fast path — works for recent matches).
+    3. If not found, fall back to a DuckDuckGo site-search which covers all
+       historical rib.gg pages.
+
+    Returns the rib.gg series URL string, or None if not found on either path.
+    """
+    base_url = vlr_url.split("?")[0].rstrip("/")
+    headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0 Safari/537.36"}
+
+    resp = requests.get(base_url, headers=headers, timeout=15)
+    resp.raise_for_status()
+    soup = BeautifulSoup(resp.text, "lxml")
+
+    teams = []
+    for mod in ("mod-1", "mod-2"):
+        el = soup.select_one(f".match-header-link-name.{mod}")
+        if el:
+            lines = [ln.strip() for ln in el.get_text().splitlines() if ln.strip()]
+            if lines:
+                teams.append(lines[0])
+
+    if len(teams) < 2:
+        print("Could not extract team names from vlr.gg page.")
+        return None
+
+    print(f"Searching rib.gg for: {teams[0]} vs {teams[1]}")
+    tokens = [t.lower().split()[0] for t in teams]
+
+    # --- Step 1: rib.gg/matches via Selenium (recent matches) ---
+    result = None
+    driver = Driver(uc=True, headless=False)
+    try:
+        driver.uc_open_with_reconnect("https://www.rib.gg/matches", reconnect_time=7)
+        try:
+            WebDriverWait(driver, 15).until(
+                EC.presence_of_element_located((By.XPATH, "//a[contains(@href, '/series/')]"))
+            )
+            for link in driver.find_elements(By.XPATH, "//a[contains(@href, '/series/')]"):
+                href = link.get_attribute("href") or ""
+                if all(tok in link.text.lower() for tok in tokens):
+                    result = href
+                    break
+        except TimeoutException:
+            print("rib.gg/matches did not load in time.")
+    finally:
+        driver.close()
+
+    if result:
+        print(f"Found on rib.gg/matches: {result}")
+        return result
+
+    # --- Step 2: DuckDuckGo site-search (historical matches) ---
+    print("Not on recent matches page — trying DuckDuckGo site search...")
+    result = _rib_url_from_search(teams[0], teams[1])
+
+    if result:
+        print(f"Found via search: {result}")
+    else:
+        print(
+            f"No rib.gg page found for '{teams[0]}' vs '{teams[1]}'. "
+            "The match may not be tracked on rib.gg."
+        )
+    return result
 
 
 if __name__ == "__main__":
