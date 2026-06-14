@@ -7,7 +7,7 @@ from moviepy import VideoFileClip
 from youtube_download import download_youtube
 from comp_extract_images import extract_images
 from extract_video import convert_rounds, extract_clip
-from scraper import comp_scrape_stats, vct_scrape_stats
+from scraper import comp_scrape_stats, vlr_scrape_stats
 from edit import comp_edit_video, get_predictions, vct_edit_video
 from comp_find_match_stats import predict_map_name, check_score, search_score
 from vct_extract_images import vct_extract_images
@@ -62,12 +62,13 @@ def run_vct(filename, subs=True):
         "output.mp4", c="copy"
     ).run()
 
-    stats_link = input("Stats link(rib.gg) ")
+    stats_link = input("Stats link (vlr.gg): ")
+    game_num = int(input("Map number (1, 2, 3...): "))
     if not (filename and stats_link):
         return
 
     config = read_config()
-    highlights_dict = vct_scrape_stats(stats_link)
+    highlights_dict = vlr_scrape_stats(stats_link, game_num)
     score_dict = vct_extract_images(filename, frame_interval=config["interval"])
     print(score_dict)
     round_dict = convert_rounds(score_dict)

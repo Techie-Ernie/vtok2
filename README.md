@@ -71,7 +71,9 @@ export API_KEY=YOUR_ROBOFLOW_API_KEY
 
 2. **scraper.py**
 
-- Contains `comp_scrape_stats()` and `vct_scrape_stats()`, which use Selenium to identify highlight rounds. For COMP, it counts kills per round and returns rounds where kills >= MIN_KILLS (as defined in config.ini). Also exposes `make_stealth_driver()`, a shared helper for creating an anti-detection Chrome instance.
+- `comp_scrape_stats()` uses Selenium to count kills per round on valorant.op.gg, returning rounds where kills >= MIN_KILLS (config.ini).
+- `vlr_scrape_stats(stats_link, game_num)` scrapes a vlr.gg match page with plain HTTP (no Selenium required). It reads elimination-type rounds from the match's round timeline and cross-references against the performance tab's advanced stats (4K/5K columns) to identify highlight rounds. Note: vlr.gg does not expose per-round kill counts in its HTML — multi-kill stats are only available as per-player aggregates per map, so all elimination rounds from maps with a 4K/5K are returned as the best approximation.
+- Also exposes `make_stealth_driver()`, a shared helper for creating an anti-detection Chrome instance used by the COMP scrapers.
 
 3. **edit.py**
 
@@ -140,7 +142,7 @@ export API_KEY=YOUR_ROBOFLOW_API_KEY
 ### Future updates
 
 - More customisation options in config.ini
-- ~~Integrating the original [VTOK 1.0](https://github.com/Techie-Ernie/vtok) into this new version - will need to update moviepy as well since VTOK 1.0 used moviepy 1.x, which has been updated to 2.x + support for VCT matches (however, [vlr.gg](https://vlr.gg) and [valorant.op.gg](https://valorant.op.gg) don't currently provide the stats I need, and [rib.gg](https://rib.gg) has shut down on 1st Dec 2024)~~ **UPDATE: [rib.gg](https://rib.gg) is back! Added support for VCT matches - Added on 28/1/25**
+- ~~Integrating the original [VTOK 1.0](https://github.com/Techie-Ernie/vtok) into this new version - will need to update moviepy as well since VTOK 1.0 used moviepy 1.x, which has been updated to 2.x + support for VCT matches (however, [vlr.gg](https://vlr.gg) and [valorant.op.gg](https://valorant.op.gg) don't currently provide the stats I need, and [rib.gg](https://rib.gg) has shut down on 1st Dec 2024)~~ **UPDATE: Switched to [vlr.gg](https://vlr.gg) scraper (no Selenium required). vlr.gg does not expose per-round kill counts, so all elimination rounds from maps with 4K/5K players are used as highlight candidates - Added June 2026**
 - Better OCR accuracy: WIP
 - Support for Twitch vods on top of YouTube
 - ~~Finding the match stats on valorant.op.gg directly from the YouTube video~~ **Added on 5/12/24**
