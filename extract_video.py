@@ -9,7 +9,7 @@ def convert_rounds(score_dict):
     return dict(enumerate(score_dict.values(), start=1))
 
 
-def extract_clip(vod_path, round_dict, highlights_dict):
+def extract_clip(vod_path, round_dict, highlights_dict, prefix=""):
     print(f"Round dict: {round_dict}")
     video_count = 0
     for i, rnd in enumerate(highlights_dict.keys()):
@@ -18,7 +18,7 @@ def extract_clip(vod_path, round_dict, highlights_dict):
             continue
         start = round_dict[rnd] + _BUY_PHASE
         end = round_dict.get(rnd + 1, start + _ROUND_MAX)
-        output = f"video{i}.mp4"
+        output = f"{prefix}video{i}.mp4"
         try:
             # Stream copy: seeks to nearest keyframe, copies without re-encoding. Near-instant.
             subprocess.run(

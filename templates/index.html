@@ -181,6 +181,59 @@
     .run-btn:hover:not(:disabled) { background: var(--red-dim); }
     .run-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
+    /* Stats link rows */
+    .stats-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .stats-row .map-label {
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      color: var(--red);
+      white-space: nowrap;
+      padding-bottom: 11px;
+      min-width: 42px;
+    }
+
+    .stats-row .field { flex: 1; margin-bottom: 0; }
+
+    .stats-row .field.map-num { flex: 0 0 64px; }
+
+    .remove-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 5px;
+      padding: 9px 11px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      line-height: 1;
+      transition: color 0.15s, border-color 0.15s;
+      margin-bottom: 0;
+      flex-shrink: 0;
+    }
+
+    .remove-btn:hover { color: var(--red); border-color: var(--red); }
+
+    .add-map-btn {
+      background: transparent;
+      border: 1px dashed var(--border);
+      color: var(--muted);
+      border-radius: 5px;
+      padding: 8px 16px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 20px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .add-map-btn:hover { color: var(--text); border-color: #555; }
+
     /* Terminal */
     .terminal {
       background: #0a0a0a;
@@ -298,49 +351,64 @@
       <button class="tab-btn" :class="{ active: mode === 'clips' }" @click="mode = 'clips'; loadClips()">Clips</button>
     </div>
 
-    <!-- VCT form -->
+    <!-- VCT form (single map or multi-map — auto-detected) -->
     <template v-if="mode === 'vct'">
       <div class="card">
         <h2>VCT Match</h2>
 
         <div class="field">
           <label>YouTube URL</label>
-          <input type="text" v-model="vct.youtube_url" placeholder="https://www.youtube.com/watch?v=..." />
+          <div style="display:flex;gap:10px">
+            <input type="text" v-model="vct.youtube_url" placeholder="https://www.youtube.com/watch?v=..." />
+            <button @click="autoDetect" :disabled="!vct.youtube_url || detecting || running"
+                    style="flex-shrink:0;padding:9px 14px;background:var(--border);color:var(--text);
+                           border:1px solid #444;border-radius:5px;cursor:pointer;font-size:0.82rem;
+                           font-weight:600;white-space:nowrap;transition:background 0.15s"
+                    title="Auto-detect stats links from video title">
+              {{ detecting ? '…' : '⚡ Auto' }}
+            </button>
+          </div>
         </div>
 
-        <div class="field">
-          <label>Stats link <span style="color:#555">(rib.gg or vlr.gg)</span></label>
-          <input type="text" v-model="vct.stats_link" placeholder="https://rib.gg/series/... or https://www.vlr.gg/..." />
+        <label style="margin-bottom:10px">
+          Stats links
+          <span style="color:#555"> (rib.gg or vlr.gg — one per map, in order)</span>
+        </label>
+
+        <div class="stats-row" v-for="(entry, idx) in vct.stats_links" :key="idx">
+          <span class="map-label">MAP {{ idx + 1 }}</span>
+          <div class="field">
+            <input type="text" v-model="entry.stats_link"
+                   placeholder="https://rib.gg/series/... or https://www.vlr.gg/..." />
+          </div>
+          <div class="field map-num">
+            <input type="number" v-model.number="entry.stats_map_num" min="1" max="5" title="Map # within stats page" />
+          </div>
+          <button class="remove-btn" @click="removeMap(idx)" v-if="vct.stats_links.length > 1" title="Remove">✕</button>
         </div>
+
+        <button class="add-map-btn" @click="addMap">+ Add map</button>
 
         <div class="row">
           <div class="field">
-            <label>Start time <span style="color:#555">(HH:MM:SS, optional)</span></label>
-            <input type="text" v-model="vct.start_time" placeholder="00:00:00" />
+            <label>Start time <span style="color:#555">(optional trim)</span></label>
+            <input type="text" v-model="vct.start_time" placeholder="HH:MM:SS" />
           </div>
           <div class="field">
-            <label>End time <span style="color:#555">(HH:MM:SS, optional)</span></label>
-            <input type="text" v-model="vct.end_time" placeholder="01:30:00" />
+            <label>End time <span style="color:#555">(optional trim)</span></label>
+            <input type="text" v-model="vct.end_time" placeholder="HH:MM:SS" />
           </div>
         </div>
 
-        <div class="row">
-          <div class="field">
-            <label>Map number <span style="color:#555">(vlr.gg fallback only)</span></label>
-            <input type="number" v-model.number="vct.game_num" min="1" max="5" style="max-width:100px" />
-          </div>
-          <div class="field" style="display:flex;align-items:flex-end;padding-bottom:2px">
-            <div class="toggle-row">
-              <label class="toggle">
-                <input type="checkbox" v-model="vct.subs" />
-                <span class="slider"></span>
-              </label>
-              <span class="toggle-label">Generate subtitles</span>
-            </div>
-          </div>
+        <div class="toggle-row" style="margin-bottom:16px">
+          <label class="toggle">
+            <input type="checkbox" v-model="vct.subs" />
+            <span class="slider"></span>
+          </label>
+          <span class="toggle-label">Generate subtitles</span>
         </div>
 
-        <button class="run-btn" :disabled="running" @click="submit('vct')">
+        <button class="run-btn" :disabled="running" @click="submitVct">
           {{ running ? 'Running…' : 'Run VCT Pipeline' }}
         </button>
       </div>
@@ -361,7 +429,7 @@
           <input type="text" v-model="comp.player_id" placeholder="name#TAG" />
         </div>
 
-        <button class="run-btn" :disabled="running" @click="submit('comp')">
+        <button class="run-btn" :disabled="running" @click="submitComp">
           {{ running ? 'Running…' : 'Run COMP Pipeline' }}
         </button>
       </div>
@@ -418,10 +486,9 @@
 
         const vct = ref({
           youtube_url: '',
-          stats_link: '',
+          stats_links: [{ stats_link: '', stats_map_num: 1 }],
           start_time: '',
           end_time: '',
-          game_num: 1,
           subs: true,
         });
 
@@ -430,24 +497,48 @@
           player_id: '',
         });
 
-        async function submit(m) {
-          logs.value = [];
-          jobStatus.value = 'running';
-          running.value = true;
+        const detecting = ref(false);
 
-          const payload = m === 'vct'
-            ? { mode: 'vct', ...vct.value }
-            : { mode: 'comp', ...comp.value };
+        async function autoDetect() {
+          detecting.value = true;
+          try {
+            const res = await fetch('/api/detect', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                youtube_url: vct.value.youtube_url,
+                num_maps: vct.value.stats_links.length,
+              }),
+            });
+            const data = await res.json();
+            if (data.stats_links) {
+              data.stats_links.forEach((detected, i) => {
+                if (!detected.stats_link) return;
+                if (i < vct.value.stats_links.length) {
+                  vct.value.stats_links[i].stats_link = detected.stats_link;
+                  vct.value.stats_links[i].stats_map_num = detected.stats_map_num;
+                } else {
+                  vct.value.stats_links.push({ ...detected });
+                }
+              });
+            }
+          } catch (e) {
+            console.error('Auto-detect failed:', e);
+          } finally {
+            detecting.value = false;
+          }
+        }
 
-          const res = await fetch('/api/run', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
+        function addMap() {
+          vct.value.stats_links.push({ stats_link: '', stats_map_num: 1 });
+        }
 
-          const { job_id } = await res.json();
+        function removeMap(idx) {
+          vct.value.stats_links.splice(idx, 1);
+        }
+
+        function _startSSE(job_id) {
           const es = new EventSource(`/api/status/${job_id}`);
-
           es.onmessage = async (e) => {
             const msg = JSON.parse(e.data);
             if (msg.type === 'log') {
@@ -455,18 +546,45 @@
             } else if (msg.type === 'done') {
               jobStatus.value = msg.status;
               running.value = false;
-              if (msg.status === 'error') {
-                logs.value.push({ text: '— pipeline failed —', cls: 'error' });
-              } else {
-                logs.value.push({ text: '— pipeline complete —', cls: 'done' });
-              }
+              logs.value.push({
+                text: msg.status === 'error' ? '— pipeline failed —' : '— pipeline complete —',
+                cls: msg.status === 'error' ? 'error' : 'done',
+              });
               es.close();
             }
             await nextTick();
-            if (terminal.value) {
-              terminal.value.scrollTop = terminal.value.scrollHeight;
-            }
+            if (terminal.value) terminal.value.scrollTop = terminal.value.scrollHeight;
           };
+        }
+
+        async function _post(payload) {
+          logs.value = [];
+          jobStatus.value = 'running';
+          running.value = true;
+          const res = await fetch('/api/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const { job_id } = await res.json();
+          return job_id;
+        }
+
+        async function submitVct() {
+          const job_id = await _post({
+            mode: 'vct',
+            youtube_url: vct.value.youtube_url,
+            stats_links: vct.value.stats_links,
+            start_time: vct.value.start_time || null,
+            end_time: vct.value.end_time || null,
+            subs: vct.value.subs,
+          });
+          _startSSE(job_id);
+        }
+
+        async function submitComp() {
+          const job_id = await _post({ mode: 'comp', ...comp.value });
+          _startSSE(job_id);
         }
 
         async function loadClips() {
@@ -474,7 +592,13 @@
           clips.value = await res.json();
         }
 
-        return { mode, running, jobStatus, logs, clips, terminal, vct, comp, submit, loadClips };
+        return {
+          mode, running, jobStatus, logs, clips, terminal,
+          vct, comp,
+          detecting, autoDetect,
+          addMap, removeMap,
+          submitVct, submitComp, loadClips,
+        };
       }
     }).mount('#app');
   </script>

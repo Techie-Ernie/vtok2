@@ -33,16 +33,32 @@ def _run_job(job_id: str, mode: str, params: dict):
         config = read_config()
 
         if mode == "vct":
-            from pipeline import run_vct_pipeline
-            run_vct_pipeline(
+            from pipeline import run_vct_pipeline_auto
+            run_vct_pipeline_auto(
                 youtube_url=params["youtube_url"],
-                stats_link=params["stats_link"],
+                stats_links=params["stats_links"],
                 start_time=params.get("start_time") or None,
                 end_time=params.get("end_time") or None,
                 config=config,
                 log=log,
                 subs=params.get("subs", True),
-                game_num=int(params.get("game_num", 1)),
+            )
+        elif mode == "vct_scan":
+            from pipeline import pre_scan_vct
+            scan_id, map_meta = pre_scan_vct(
+                youtube_url=params["youtube_url"],
+                config=config,
+                log=log,
+            )
+            q.put({"type": "scan_done", "scan_id": scan_id, "maps": map_meta})
+        elif mode == "vct_multi":
+            from pipeline import run_vct_pipeline_multi
+            run_vct_pipeline_multi(
+                scan_id=params["scan_id"],
+                map_configs=params["map_configs"],
+                config=config,
+                log=log,
+                subs=params.get("subs", True),
             )
         elif mode == "comp":
             from pipeline import run_comp_pipeline
@@ -69,7 +85,7 @@ def _run_job(job_id: str, mode: str, params: dict):
 def api_run():
     data = request.get_json(force=True)
     mode = data.get("mode")
-    if mode not in ("vct", "comp"):
+    if mode not in ("vct", "vct_scan", "vct_multi", "comp"):
         return jsonify({"error": "mode must be 'vct' or 'comp'"}), 400
 
     job_id = str(uuid.uuid4())
@@ -99,10 +115,22 @@ def api_status(job_id):
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
+@app.post("/api/detect")
+def api_detect():
+    data = request.get_json(force=True)
+    youtube_url = data.get("youtube_url", "").strip()
+    num_maps = int(data.get("num_maps", 1))
+    if not youtube_url:
+        return jsonify({"error": "youtube_url required"}), 400
+    from scraper import auto_detect_stats_links
+    stats_links = auto_detect_stats_links(youtube_url, num_maps)
+    return jsonify({"stats_links": stats_links})
+
+
 @app.get("/api/clips")
 def api_clips():
     clips = sorted(
-        str(p.name) for p in _CLIPS_DIR.glob("video*_final.mp4")
+        str(p.name) for p in _CLIPS_DIR.glob("*video*_final.mp4")
     )
     return jsonify(clips)
 

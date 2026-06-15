@@ -1,6 +1,6 @@
 import cv2
 from vct_ocr import ocr_score
-from frame_extraction import extract_score_frames
+from frame_extraction import extract_score_frames, extract_all_score_frames
 
 # Calibrated from Masters London 2026 broadcast (1920x1080).
 # Two HUD modes with different score positions:
@@ -34,6 +34,14 @@ def vct_extract_images(video_path, frame_interval=540, debug=False, game_num=Non
     return extract_score_frames(
         video_path, _get_scores, frame_interval, debug,
         allow_swap=True, get_region_fn=_get_region, game_num=game_num,
+    )
+
+
+def vct_extract_images_all(video_path, frame_interval=540, debug=False):
+    """Scan entire VOD once; return {map_num: score_dict} for every map found."""
+    return extract_all_score_frames(
+        video_path, _get_scores, frame_interval, debug,
+        allow_swap=True, get_region_fn=_get_region,
     )
 
 

@@ -1,5 +1,6 @@
 import json
 import re
+import subprocess
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs, unquote
@@ -45,7 +46,7 @@ def comp_scrape_stats(stats_link, min_kills):
     return {rnd: kills for rnd, kills in kills_dict.items() if kills >= min_kills}
 
 
-def vct_scrape_stats(stats_link):
+def vct_scrape_stats(stats_link, map_index=1):
     """
     Scrape rib.gg for highlight rounds (4K/5K) by parsing the __NEXT_DATA__ JSON
     embedded in the page — one load instead of one per round.
@@ -88,7 +89,12 @@ def vct_scrape_stats(stats_link):
     # pageProps.matchId is the match shown (from ?match= URL param)
     match_id = pp.get("matchId")
     matches = pp.get("series", {}).get("matches", [])
-    target = next((x for x in matches if x["id"] == match_id), None) or (matches[0] if matches else None)
+    if match_id:
+        # URL has ?match=NNN — use that specific match
+        target = next((x for x in matches if x["id"] == match_id), None)
+    else:
+        # No match param — use map_index (1-indexed) to select within the series
+        target = matches[min(map_index - 1, len(matches) - 1)] if matches else None
     if not target:
         print("No match data found in rib.gg response")
         return {}
@@ -341,6 +347,105 @@ def vlr_to_rib(vlr_url):
             "The match may not be tracked on rib.gg."
         )
     return result
+
+
+def _search_vlr_match_url(team1, team2, event_hint=""):
+    """
+    Search DuckDuckGo for a vlr.gg MATCH page (not a news article).
+    Match pages have '-vs-' in their URL slug; news articles do not.
+    """
+    query = f'site:vlr.gg "{team1}" "{team2}"'
+    if event_hint:
+        query += f' "{event_hint}"'
+    resp = requests.get(
+        "https://html.duckduckgo.com/html/",
+        params={"q": query},
+        headers={"User-Agent": "Mozilla/5.0"},
+        timeout=15,
+    )
+    soup = BeautifulSoup(resp.text, "lxml")
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        if "duckduckgo.com/l/" in href:
+            parsed = urlparse("https:" + href)
+            real_url = parse_qs(parsed.query).get("uddg", [None])[0]
+            if real_url:
+                href = unquote(real_url)
+        # Match pages have team1-vs-team2 in the slug; articles don't
+        if re.search(r'vlr\.gg/\d+/[^/?]+-vs-[^/?]+', href):
+            return href.split("?")[0].rstrip("/")
+    return None
+
+
+def auto_detect_stats_links(youtube_url, num_maps, log=print):
+    """
+    Fetch the YouTube video title via yt-dlp, extract the 'X vs Y' team names,
+    search vlr.gg for the match, and return a list of {stats_link, stats_map_num}
+    pre-populated for every map (same URL, incrementing map number).
+    Falls back to empty entries if detection fails at any step.
+    """
+    empty = [{"stats_link": "", "stats_map_num": i + 1} for i in range(num_maps)]
+
+    log("Fetching video metadata...")
+    try:
+        result = subprocess.run(
+            ["yt-dlp", "--dump-json", "--no-download", "--no-playlist", youtube_url],
+            capture_output=True, text=True, timeout=30,
+        )
+    except Exception as e:
+        log(f"yt-dlp failed: {e}")
+        return empty
+
+    if result.returncode != 0 or not result.stdout.strip():
+        log("Could not fetch video metadata.")
+        return empty
+
+    meta = json.loads(result.stdout)
+    title = meta.get("title", "")
+    log(f"Title: {title}")
+
+    # Parse "Team A vs Team B" — stop at common delimiters (|, -, ,, or end of string)
+    m = re.search(
+        r'([A-Za-z0-9][\w\s\.]+?)\s+[Vv][Ss]\.?\s+([\w\s\.]+?)(?:\s*[|\-,]|$)',
+        title,
+    )
+    if not m:
+        log("No 'X vs Y' pattern found in title — cannot auto-detect.")
+        return empty
+
+    team1, team2 = m.group(1).strip(), m.group(2).strip()
+    log(f"Detected teams: {team1} vs {team2}")
+
+    # Use everything after the first delimiter as event hint for more precise search
+    event_hint = ""
+    after = re.search(r'[|\-,]\s*(.+)', title)
+    if after:
+        event_hint = after.group(1).strip()
+
+    # Step 1: find the vlr.gg match page (vlr.gg indexes abbreviations like EDG/FUT,
+    # and match page slugs always contain '-vs-' which filters out news articles)
+    log("Searching vlr.gg for match page...")
+    vlr_url = _search_vlr_match_url(team1, team2, event_hint)
+    if not vlr_url:
+        # Retry without event hint in case it was too specific
+        vlr_url = _search_vlr_match_url(team1, team2)
+    if not vlr_url:
+        log(f"No vlr.gg match page found for '{team1}' vs '{team2}'.")
+        return empty
+    log(f"Found vlr.gg match: {vlr_url}")
+
+    # Step 2: vlr_to_rib fetches full team names from the vlr page and searches
+    # rib.gg for the corresponding series (handles abbreviation → full name mapping)
+    log("Looking up rib.gg series...")
+    rib_url = vlr_to_rib(vlr_url)
+    if not rib_url:
+        log("No rib.gg series found — try pasting the stats link manually.")
+        return empty
+
+    # Strip match param so vct_scrape_stats selects the map via map_index
+    rib_url = rib_url.split("?")[0] + "?tab=rounds"
+    log(f"Found rib.gg series: {rib_url}")
+    return [{"stats_link": rib_url, "stats_map_num": i + 1} for i in range(num_maps)]
 
 
 if __name__ == "__main__":
