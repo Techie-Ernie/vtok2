@@ -44,17 +44,16 @@ def _ensure_h264(filename, log=print):
     return filename
 
 
-def _scrape(stats_link, stats_map_num, log):
+def _scrape(stats_link, stats_map_num, log, min_kills=4):
     """Scrape highlights + vocabulary from a rib.gg or vlr.gg URL."""
     if "vlr.gg" in stats_link:
         rib_link = vlr_to_rib(stats_link)
         if rib_link:
             log(f"Found on rib.gg: {rib_link}")
-            return vct_scrape_stats(rib_link, map_index=stats_map_num)
+            return vct_scrape_stats(rib_link, map_index=stats_map_num, min_kills=min_kills)
         log("Not found on rib.gg — using vlr.gg scraper.")
         return vlr_scrape_stats(stats_link, stats_map_num)
-    # Direct rib.gg URL: stats_map_num selects which match within the series
-    return vct_scrape_stats(stats_link, map_index=stats_map_num)
+    return vct_scrape_stats(stats_link, map_index=stats_map_num, min_kills=min_kills)
 
 
 def pre_scan_vct(youtube_url, config, log=print):
@@ -124,7 +123,7 @@ def run_vct_pipeline_multi(scan_id, map_configs, config, log=print, subs=True):
             continue
 
         log("Scraping highlights...")
-        highlights_dict, vocabulary = _scrape(stats_link, stats_map_num, log)
+        highlights_dict, vocabulary = _scrape(stats_link, stats_map_num, log, min_kills=config["minimum_kills"])
         log(f"Highlight rounds: {list(highlights_dict.keys())}")
         if not highlights_dict:
             log("No highlights found — skipping")
@@ -200,7 +199,7 @@ def run_vct_pipeline_auto(youtube_url, stats_links, start_time, end_time,
             log(f"=== Map {vod_map_num} ===")
 
         log("Scraping highlights...")
-        highlights_dict, vocabulary = _scrape(stats_link, stats_map_num, log)
+        highlights_dict, vocabulary = _scrape(stats_link, stats_map_num, log, min_kills=config["minimum_kills"])
         log(f"Highlight rounds: {list(highlights_dict.keys())}")
         if not highlights_dict:
             log("No highlights found — skipping")
@@ -248,7 +247,7 @@ def run_vct_pipeline(youtube_url, stats_link, start_time, end_time,
         filename = "output.mp4"
 
     log("Finding match highlights...")
-    highlights_dict, vocabulary = _scrape(stats_link, game_num, log)
+    highlights_dict, vocabulary = _scrape(stats_link, game_num, log, min_kills=config["minimum_kills"])
 
     log(f"Highlight rounds: {list(highlights_dict.keys())}")
     if not highlights_dict:

@@ -46,7 +46,7 @@ def comp_scrape_stats(stats_link, min_kills):
     return {rnd: kills for rnd, kills in kills_dict.items() if kills >= min_kills}
 
 
-def vct_scrape_stats(stats_link, map_index=1):
+def vct_scrape_stats(stats_link, map_index=1, min_kills=4):
     """
     Scrape rib.gg for highlight rounds (4K/5K) by parsing the __NEXT_DATA__ JSON
     embedded in the page — one load instead of one per round.
@@ -71,39 +71,57 @@ def vct_scrape_stats(stats_link, map_index=1):
     except TimeoutException:
         print("Loading took too much time, try again!")
 
-    src = driver.page_source
-    driver.close()
+    def _parse_next_data(page_src):
+        m = re.search(
+            r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>',
+            page_src, re.DOTALL
+        )
+        if not m:
+            return None
+        return json.loads(m.group(1))["props"]["pageProps"]
 
-    # Pull all round/event data from Next.js server-side props
-    m = re.search(
-        r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>',
-        src, re.DOTALL
-    )
-    if not m:
+    pp = _parse_next_data(driver.page_source)
+    if not pp:
+        driver.quit()
         print("Could not find __NEXT_DATA__ on rib.gg page")
-        return {}
+        return {}, []
 
-    data = json.loads(m.group(1))
-    pp = data["props"]["pageProps"]
-
-    # pageProps.matchId is the match shown (from ?match= URL param)
     match_id = pp.get("matchId")
     matches = pp.get("series", {}).get("matches", [])
+
     if match_id:
-        # URL has ?match=NNN — use that specific match
         target = next((x for x in matches if x["id"] == match_id), None)
     else:
-        # No match param — use map_index (1-indexed) to select within the series
         target = matches[min(map_index - 1, len(matches) - 1)] if matches else None
+
     if not target:
+        driver.quit()
         print("No match data found in rib.gg response")
-        return {}
+        return {}, []
+
+    # matchDetails (events) is only populated when ?match=NNN is in the URL.
+    # If it's missing, reload the page with the correct match param.
+    if not pp.get("matchDetails"):
+        match_param_id = target["id"]
+        base = stats_link.split("?")[0]
+        reload_url = f"{base}?match={match_param_id}&tab=rounds"
+        print(f"Reloading with match param: {reload_url}")
+        driver.uc_open_with_reconnect(reload_url, reconnect_time=7)
+        try:
+            WebDriverWait(driver, 12).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "MuiBox-root"))
+            )
+        except TimeoutException:
+            pass
+        pp = _parse_next_data(driver.page_source) or pp
+
+    driver.quit()
 
     num_rounds = len(target.get("rounds", []))
-    print(f"Total rounds: {num_rounds}")
+    print(f"Map {map_index}: match id={target['id']}, rounds={num_rounds}")
 
     # Count kills per player per round from the events array
-    events = pp.get("matchDetails", {}).get("events", [])
+    events = (pp.get("matchDetails") or {}).get("events", [])
     round_kills: dict[int, dict[int, int]] = {}
     for event in events:
         if event.get("eventType") == "kill" and event.get("playerId") is not None:
@@ -115,8 +133,14 @@ def vct_scrape_stats(stats_link, map_index=1):
     highlight_rounds = {}
     for rnum, player_kills in round_kills.items():
         max_kills = max(player_kills.values())
-        if max_kills >= 4:
-            highlight_rounds[rnum] = "5K" if max_kills >= 5 else "4K"
+        if max_kills >= min_kills:
+            if max_kills >= 5:
+                label = "5K"
+            elif max_kills >= 4:
+                label = "4K"
+            else:
+                label = "3K"
+            highlight_rounds[rnum] = label
 
     # Collect team names + player IGNs to pass as Whisper vocabulary hints
     vocabulary = []
@@ -277,6 +301,84 @@ def _rib_url_from_search(team1, team2):
     return None
 
 
+def _tok_matches(tok, text):
+    """True if tok is a substring OR a subsequence (ignoring spaces) of text."""
+    if tok in text:
+        return True
+    it = iter(text.replace(" ", ""))
+    return all(c in it for c in tok)
+
+
+def _rib_matches_selenium(tokens):
+    """
+    Open rib.gg/matches → Results tab with Selenium and return the first series
+    URL whose link text contains all tokens (case-insensitive). Works with
+    abbreviations (EDG, FUT) because rib.gg listings show team short-codes.
+    Returns None if not found or page times out.
+    """
+    import time as _time
+    driver = Driver(uc=True, headless=False)
+    try:
+        # rib.gg/results is the past-matches page (rib.gg/matches shows only upcoming)
+        driver.uc_open_with_reconnect("https://www.rib.gg/results", reconnect_time=7)
+        _time.sleep(2)
+
+        # Dismiss cookie banner — rib.gg shows "Allow all" / "Deny" / "Customize"
+        for xpath in [
+            "//button[normalize-space()='Allow all']",
+            "//button[contains(., 'Allow')]",
+            "//button[contains(., 'Accept')]",
+        ]:
+            try:
+                btn = driver.find_element(By.XPATH, xpath)
+                btn.click()
+                print(f"Cookie banner dismissed ({btn.text.strip()!r})")
+                _time.sleep(1)
+                break
+            except Exception:
+                pass
+
+        try:
+            WebDriverWait(driver, 15).until(
+                EC.presence_of_element_located((By.XPATH, "//a[contains(@href, '/series/')]"))
+            )
+        except TimeoutException:
+            print("rib.gg/matches did not load series links in time.")
+            return None
+
+        # rib.gg uses a virtual list — only visible rows are rendered.
+        # Scroll in steps, checking for token matches at each position.
+        scroll_y = 0
+        step = 500
+        last_page_height = 0
+
+        while True:
+            links = driver.find_elements(By.XPATH, "//a[contains(@href, '/series/')]")
+            for link in links:
+                text = (link.text or "").strip().lower()
+                href = link.get_attribute("href") or ""
+                if text and all(_tok_matches(tok, text) for tok in tokens):
+                    return href
+
+            page_height = driver.execute_script("return document.body.scrollHeight")
+            if scroll_y >= page_height and page_height == last_page_height:
+                break
+            last_page_height = page_height
+            scroll_y += step
+            driver.execute_script(f"window.scrollTo(0, {scroll_y});")
+            _time.sleep(0.4)
+
+        print(f"No rib.gg match found for tokens: {tokens}")
+        links = driver.find_elements(By.XPATH, "//a[contains(@href, '/series/')]")
+        rendered = [(lnk.text.strip(), lnk.get_attribute("href")) for lnk in links if lnk.text.strip()]
+        print(f"  ({len(rendered)} rendered series links after scrolling)")
+        for txt, href in rendered[:15]:
+            print(f"  - {txt!r}")
+    finally:
+        driver.quit()
+    return None
+
+
 def vlr_to_rib(vlr_url):
     """
     Given a vlr.gg match URL, find and return the corresponding rib.gg URL.
@@ -313,23 +415,7 @@ def vlr_to_rib(vlr_url):
     tokens = [t.lower().split()[0] for t in teams]
 
     # --- Step 1: rib.gg/matches via Selenium (recent matches) ---
-    result = None
-    driver = Driver(uc=True, headless=False)
-    try:
-        driver.uc_open_with_reconnect("https://www.rib.gg/matches", reconnect_time=7)
-        try:
-            WebDriverWait(driver, 15).until(
-                EC.presence_of_element_located((By.XPATH, "//a[contains(@href, '/series/')]"))
-            )
-            for link in driver.find_elements(By.XPATH, "//a[contains(@href, '/series/')]"):
-                href = link.get_attribute("href") or ""
-                if all(tok in link.text.lower() for tok in tokens):
-                    result = href
-                    break
-        except TimeoutException:
-            print("rib.gg/matches did not load in time.")
-    finally:
-        driver.close()
+    result = _rib_matches_selenium(tokens)
 
     if result:
         print(f"Found on rib.gg/matches: {result}")
@@ -422,29 +508,35 @@ def auto_detect_stats_links(youtube_url, num_maps, log=print):
     if after:
         event_hint = after.group(1).strip()
 
-    # Step 1: find the vlr.gg match page (vlr.gg indexes abbreviations like EDG/FUT,
-    # and match page slugs always contain '-vs-' which filters out news articles)
+    tokens = [team1.lower(), team2.lower()]
+    rib_url = None
+
+    # Strategy 1: DDG → vlr.gg match page (slug has -vs-, filtering out articles)
+    # → scrape full team names → search rib.gg. Works when DDG has vlr indexed.
     log("Searching vlr.gg for match page...")
-    vlr_url = _search_vlr_match_url(team1, team2, event_hint)
-    if not vlr_url:
-        # Retry without event hint in case it was too specific
-        vlr_url = _search_vlr_match_url(team1, team2)
-    if not vlr_url:
-        log(f"No vlr.gg match page found for '{team1}' vs '{team2}'.")
-        return empty
-    log(f"Found vlr.gg match: {vlr_url}")
+    vlr_url = _search_vlr_match_url(team1, team2, event_hint) or _search_vlr_match_url(team1, team2)
+    if vlr_url:
+        log(f"Found vlr.gg: {vlr_url} — looking up rib.gg...")
+        rib_url = vlr_to_rib(vlr_url)
 
-    # Step 2: vlr_to_rib fetches full team names from the vlr page and searches
-    # rib.gg for the corresponding series (handles abbreviation → full name mapping)
-    log("Looking up rib.gg series...")
-    rib_url = vlr_to_rib(vlr_url)
+    # Strategy 2: rib.gg/matches via Selenium with raw abbreviations.
+    # rib.gg match listings show short team codes (EDG, FUT) so token matching works
+    # without knowing the full team name. Reliable for recent matches.
     if not rib_url:
-        log("No rib.gg series found — try pasting the stats link manually.")
+        log("Trying rib.gg/matches directly...")
+        rib_url = _rib_matches_selenium(tokens)
+
+    # Strategy 3: DDG site:rib.gg — works for historical matches not on /matches page
+    if not rib_url:
+        log("Trying DuckDuckGo rib.gg search...")
+        rib_url = _rib_url_from_search(team1, team2)
+
+    if not rib_url:
+        log("Could not auto-detect stats link — paste it manually.")
         return empty
 
-    # Strip match param so vct_scrape_stats selects the map via map_index
     rib_url = rib_url.split("?")[0] + "?tab=rounds"
-    log(f"Found rib.gg series: {rib_url}")
+    log(f"Found: {rib_url}")
     return [{"stats_link": rib_url, "stats_map_num": i + 1} for i in range(num_maps)]
 
 
